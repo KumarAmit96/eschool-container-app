@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/splash"
+    tools:context=".LoginActivity">
+
+    <ImageView
+        android:layout_width="@dimen/size_200"
+        android:layout_height="@dimen/size_120"
+        android:contentDescription="@string/app_name"
+        android:src="@mipmap/school_logo"
+        android:layout_centerHorizontal="true"
+        android:layout_above="@id/top"
+        android:layout_margin="@dimen/size_16"/>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_centerInParent="true"
+        android:id="@+id/top">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/login"
+            android:textAllCaps="true"
+            android:textSize="@dimen/margin_24_sp"
+            android:layout_marginBottom="@dimen/size_8"
+            android:layout_marginStart="@dimen/size_10"
+            android:textColor="@color/black"
+            android:fontFamily="@font/quicksand_bold"
+            android:id="@+id/loginText"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/welcome_back"
+            android:textAllCaps="true"
+            android:textSize="@dimen/margin_16_sp"
+            android:layout_marginStart="@dimen/size_10"
+            android:layout_below="@id/loginText"
+            android:textColor="@color/black"
+            android:fontFamily="@font/quicksand_bold"
+            android:id="@+id/welcomeText"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/login"
+            android:textAllCaps="true"
+            android:textSize="@dimen/margin_16_sp"
+            android:layout_marginStart="@dimen/size_10"
+            android:layout_below="@id/welcomeText"
+            android:textColor="@color/black"
+            android:fontFamily="@font/quicksand_bold"
+            android:id="@+id/loginContinueText"/>
+
+        <RelativeLayout
+            android:id="@+id/collegecode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:gravity="center"
+            android:layout_below="@id/loginContinueText"
+            android:layout_margin="@dimen/size_10">
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/CustomTextInputLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/college_code">
+
+                <EditText
+                    android:id="@+id/code_college"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:maxLength="5"
+                    android:focusable="true"
+                    android:gravity="center|start"
+                    android:background="@null"
+                    android:textColor="@color/black"
+                    android:textColorHint="@color/black"/>
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </RelativeLayout>
+
+
+
+        <RelativeLayout
+            android:id="@+id/username"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_below="@id/collegecode"
+            android:layout_margin="@dimen/size_10">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/username"
+                style="@style/CustomTextInputLayout">
+
+                <EditText
+                    android:id="@+id/username_box"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:background="@null"
+                    android:textColor="@color/black"
+                    android:textColorHint="@color/black"/>
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_below="@id/username"
+            android:layout_margin="@dimen/size_10">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColorHint="@color/black"
+                android:hint="@string/password"
+                style="@style/CustomTextInputLayout"
+                app:passwordToggleEnabled="true">
+
+                <EditText
+                    android:id="@+id/password_box"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textPassword"
+                    android:maxLines="1"
+                    android:background="@null"
+                    android:textColor="@color/black"
+                    android:textColorHint="@color/black"/>
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </RelativeLayout>
+
+
+        <Button
+            android:id="@+id/submit"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/size_45"
+            android:layout_centerHorizontal="true"
+            android:layout_margin="@dimen/size_10"
+            android:text="@string/submit"
+            android:elevation="@dimen/margin_14_sp"
+            app:rippleColor="@color/white"
+            android:onClick="callLogin"
+            android:textSize="@dimen/margin_16_sp"
+            android:backgroundTint="@color/black"
+            android:textColor="@color/white"
+            android:layout_below="@id/password"/>
+
+        <LinearLayout
+            android:id="@+id/forgot_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/submit"
+            android:gravity="center"
+            android:layout_margin="@dimen/size_4"
+            android:padding="@dimen/size_4"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/forget_password"
+                android:textSize="@dimen/margin_14_sp"
+                android:textColor="@color/black"
+                android:fontFamily="@font/quicksand_medium" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/click_here"
+                android:textStyle="italic"
+                android:onClick="getForgetCall"
+                android:textColor="@color/green"
+                android:paddingStart="@dimen/size_2"
+                android:textSize="@dimen/margin_14_sp"
+                android:fontFamily="@font/quicksand_medium" />
+
+
+        </LinearLayout>
+    </RelativeLayout>
+
+
+</RelativeLayout>

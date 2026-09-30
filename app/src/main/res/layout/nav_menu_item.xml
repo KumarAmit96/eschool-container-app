@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/menu_layout"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/size_80"
+    android:maxHeight="@dimen/size_80"
+    app:cardCornerRadius="@dimen/size_1"
+    app:cardElevation="@dimen/size_1">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:padding="@dimen/size_16">
+
+        <ImageView
+            android:id="@+id/icon"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.2"
+            android:contentDescription="@string/app_name"
+            android:src="@mipmap/ic_launcher" />
+
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginLeft="@dimen/size_2"
+            android:layout_marginRight="@dimen/size_2"
+            android:layout_weight="0.8"
+            android:gravity="center|start"
+            android:text="@string/menu_home"
+            android:textAllCaps="true"
+            android:textAppearance="@font/quicksand_bold"
+            android:textColor="@android:color/black"
+            android:textSize="@dimen/margin_16_sp" />
+
+        <ImageView
+            android:id="@+id/arrow"
+            android:layout_width="@dimen/size_20"
+            android:layout_height="@dimen/size_20"
+            android:visibility="gone"
+            android:layout_gravity="center_vertical"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/arrow_right" />
+
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,19 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background circle -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/purple_700" /> <!-- Background color -->
+            <size android:width="48dp" android:height="48dp" /> <!-- Size of the circle -->
+        </shape>
+    </item>
+
+    <!-- Progress circle -->
+    <item>
+        <clip>
+            <shape android:shape="oval">
+                <solid android:color="@color/purple_500" /> <!-- Progress color -->
+                <size android:width="48dp" android:height="48dp" /> <!-- Size of the circle -->
+            </shape>
+        </clip>
+    </item>
+</layer-list>

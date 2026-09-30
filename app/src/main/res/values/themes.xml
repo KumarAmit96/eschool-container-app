@@ -1,0 +1,58 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.Default" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorSecondaryVariant">@color/teal_700</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="actionBarTheme">@style/CustomActionBar</item>
+
+    </style>
+
+    <style name="Theme.school.AppBarOverlay" parent="ThemeOverlay.MaterialComponents.ActionBar">
+        <item name="colorPrimary">@color/purple_500</item> <!-- Set your desired ActionBar color -->
+        <item name="android:textColorPrimary">@color/white</item> <!-- Set text color to white -->
+    </style>
+
+    <style name="Theme.school.PopupOverlay" parent="ThemeOverlay.MaterialComponents.Light">
+        <item name="android:textColorPrimary">@color/black</item> <!-- Set text color to white -->
+        <item name="android:textColorSecondary">@color/black</item>
+    </style>
+
+    <!-- Custom ActionBar style -->
+    <style name="CustomActionBar" parent="ThemeOverlay.MaterialComponents.ActionBar">
+        <item name="backgroundTint">@color/purple_500</item> <!-- Action Bar background color -->
+        <item name="titleTextStyle">@style/CustomActionBarTitle
+        </item> <!-- Optional for title styling -->
+    </style>
+
+    <!-- Optional: Custom title text styling -->
+    <style name="CustomActionBarTitle">
+        <item name="android:textColor">@android:color/white</item>
+    </style>
+
+    <style name="Theme.Default.Fullscreen" parent="Theme.Default">
+        <item name="android:actionBarStyle">@style/Widget.Theme.Default.ActionBar.Fullscreen</item>
+        <item name="android:windowActionBarOverlay">true</item>
+        <item name="android:windowBackground">@null</item>
+    </style>
+
+    <style name="ThemeOverlay.school.FullscreenContainer" parent="">
+        <item name="fullscreenBackgroundColor">@color/light_blue_600</item>
+        <item name="fullscreenTextColor">@color/light_blue_A200</item>
+    </style>
+
+    <style name="CustomTextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
+        <!-- You can customize the appearance of TextInputLayout here -->
+        <item name="boxStrokeColor">@color/purple_900</item>
+        <item name="hintTextColor">@color/purple_900</item>
+        <item name="android:textColorHint">@color/black</item>
+    </style>
+
+</resources>

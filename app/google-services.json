@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1049707997917",
+    "project_id": "eskooltech-c8aa3",
+    "storage_bucket": "eskooltech-c8aa3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1049707997917:android:64cd5f1bc72531c9064934",
+        "android_client_info": {
+          "package_name": "com.tech.eskool"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-xYExMnwa9gsfiOtQOyeBo5iH3TXnqew"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1049707997917:android:bdf36284e363a8b2064934",
+        "android_client_info": {
+          "package_name": "com.tech.school"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-xYExMnwa9gsfiOtQOyeBo5iH3TXnqew"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
