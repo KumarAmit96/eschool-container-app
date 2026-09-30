@@ -36,4 +36,17 @@
     <string name="title_activity_youtube">YoutubeActivity</string>
     <string name="dummy_button">Dummy Button</string>
     <string name="dummy_content">DUMMY\nCONTENT</string>
+    <string name="welcome_back_title">Welcome back!</string>
+    <string name="login_to_continue">Please log in to continue</string>
+    <string name="select_login_type">Select login type</string>
+    <string name="select_login_type_subtitle">Choose your account type to continue</string>
+    <string name="type_parent">Parent</string>
+    <string name="type_parent_desc">Log in as a parent or guardian</string>
+    <string name="type_teacher">Teacher</string>
+    <string name="type_teacher_desc">Log in as a teaching staff member</string>
+    <string name="type_admin">Admin</string>
+    <string name="type_admin_desc">Log in as a school administrator</string>
+    <string name="hint_enter_here">Enter here</string>
+    <string name="hint_new_password">Enter new password</string>
+    <string name="hint_enrollment">Enter your enrollment number</string>
 </resources>

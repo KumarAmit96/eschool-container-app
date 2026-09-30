@@ -1,48 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/splash"
+    android:background="@color/white"
     tools:context=".StartActivity">
 
+    <!-- Doodle background without the baked-in logo, cropped (not stretched) to fill any screen -->
     <ImageView
-        android:id="@+id/image"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_centerInParent="true"
-        android:contentDescription="@string/app_name"
-        android:padding="@dimen/size_16"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop"
+        android:src="@drawable/login_bg" />
 
-    <RelativeLayout
+    <!-- Centre: logo + tagline -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="@dimen/size_16"
-        android:gravity="center">
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="@dimen/size_32">
 
-        <ProgressBar
-            android:id="@+id/progress"
-            android:layout_width="@dimen/size_22"
-            android:layout_height="@dimen/size_22"
-            android:layout_centerVertical="true"
-            style="@style/MyAlertDialogStyle"/>
+        <!-- id "image" is used by StartActivity to schedule the next screen -->
+        <ImageView
+            android:id="@+id/image"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/size_180"
+            android:adjustViewBounds="true"
+            android:contentDescription="@string/app_name"
+            android:scaleType="fitCenter"
+            android:src="@mipmap/school_logo" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/size_16"
+            android:fontFamily="@font/quicksand_bold"
+            android:gravity="center"
+            android:text="@string/stay_updated_about_the_school"
+            android:textColor="@color/text_dark"
+            android:textSize="@dimen/margin_16_sp" />
+
+    </LinearLayout>
+
+    <!-- Bottom: loader -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="@dimen/size_40"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            app:indicatorColor="@color/brand_green_dark"
+            app:indicatorSize="@dimen/size_32"
+            app:trackColor="@color/stroke_light"
+            app:trackThickness="3dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/size_10"
+            android:fontFamily="@font/quicksand_medium"
             android:text="@string/loading"
-            android:padding="@dimen/size_4"
-            android:textSize="@dimen/margin_18_sp"
-            android:layout_toEndOf="@id/progress"
-            android:textColor="@color/black"/>
+            android:textColor="@color/text_muted"
+            android:textSize="@dimen/margin_14_sp" />
 
-    </RelativeLayout>
+    </LinearLayout>
 
-</RelativeLayout>
+</FrameLayout>

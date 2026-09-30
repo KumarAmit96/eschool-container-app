@@ -15,4 +15,10 @@
     <color name="light_blue_A400">#FF00B0FF</color>
     <color name="black_overlay">#66000000</color>
     <color name="green">#53D35D</color>
+    <color name="brand_green">#8CC63F</color>
+    <color name="brand_green_dark">#5E9E1E</color>
+    <color name="text_dark">#2B2B2B</color>
+    <color name="text_muted">#6B6B6B</color>
+    <color name="card_white">#F2FFFFFF</color>
+    <color name="stroke_light">#E3E3E3</color>
 </resources>
