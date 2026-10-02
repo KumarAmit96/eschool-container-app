@@ -47,6 +47,10 @@
             android:exported="false"
             android:theme="@style/Theme.Default"/>
         <activity
+            android:name="com.tech.eskool.VerifyActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Default" />
+        <activity
             android:name="com.tech.eskool.LoginTypeActivity"
             android:exported="false"
             android:theme="@style/Theme.Default" />

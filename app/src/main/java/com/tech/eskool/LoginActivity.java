@@ -4,13 +4,14 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -35,6 +36,14 @@ import retrofit2.Response;
 
 public class LoginActivity extends AppCompatActivity {
     private static final String TAG = LoginActivity.class.getName();
+
+    /** True once we've already sent the user through VerifyActivity for this Submit tap. */
+    private boolean verifyAttempted = false;
+
+    /** Opens the server's browser check; on success, repeats the login automatically. */
+    private final ActivityResultLauncher<android.content.Intent> verifyLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
+                    result -> onVerifyResult(result.getResultCode()));
     SessionManager sessionManager;
     EditText username,password, code_college;
     String UserName,PassWord, Code;
@@ -102,9 +111,16 @@ public class LoginActivity extends AppCompatActivity {
 
     public void callLogin(View v)
     {
-        UserName = username.getText().toString();
-        PassWord = password.getText().toString();
-        Code = code_college.getText().toString();
+        verifyAttempted = false;
+        Log.setUser(code_college.getText().toString().trim() + "/" + username.getText().toString().trim());
+        doLogin();
+    }
+
+    private void doLogin()
+    {
+        UserName = username.getText().toString().trim();
+        PassWord = password.getText().toString().trim();
+        Code = code_college.getText().toString().trim();
         if(UserName == null || UserName.isEmpty()) {
             username.setError("Please fill the username ");
         } else if(PassWord == null || PassWord.isEmpty())
@@ -127,7 +143,8 @@ public class LoginActivity extends AppCompatActivity {
     {
         progressDialog.show();
 
-        Api_Interface api_interface = ApiClient.getClient().create(Api_Interface.class);
+        Api_Interface api_interface = ApiClient.getClient().newBuilder()
+                .client(HttpClientProvider.get(this)).build().create(Api_Interface.class);
 
         Call<SchoolLoginClass> call= api_interface.getSchoolLogin(userName, passWord, codes, null, type);
 
@@ -161,19 +178,26 @@ public class LoginActivity extends AppCompatActivity {
                         }
                     } else {
                         getDialog();
-                        sessionManager.getAlertWithOk(response.message());
+                        Log.e(TAG, "Employee login: HTTP " + response.code() + " " + response.message());
+                        sessionManager.getAlertWithOk(StartActivity.SOMETHING_WENT_WRONG);
                     }
                 } catch (Exception e) {
                     progressDialog.dismiss();
-                    assert response.body() != null;
+                    Log.e(TAG, "Employee login: error handling response", e);
                     sessionManager.getAlertWithOk(StartActivity.SOMETHING_WENT_WRONG);
                 }
             }
 
             @Override
             public void onFailure(Call<SchoolLoginClass> call, Throwable t) {
-                getDialog();
-                sessionManager.getAlertWithOk(StartActivity.SOMETHING_WENT_WRONG);
+                if (progressDialog.isShowing()) progressDialog.dismiss();
+                Log.e(TAG, "Employee login: request failed", t);
+                if (isNotJson(t) && !verifyAttempted)
+                    openVerification(call.request());
+                else if (isNotJson(t))
+                    showRawServerReply(call.request());
+                else
+                    sessionManager.getAlertWithOk(StartActivity.SOMETHING_WENT_WRONG);
             }
         });
 
@@ -183,7 +207,8 @@ public class LoginActivity extends AppCompatActivity {
     {
         progressDialog.show();
 
-        Api_Interface api_interface = ApiClient.getClient().create(Api_Interface.class);
+        Api_Interface api_interface = ApiClient.getClient().newBuilder()
+                .client(HttpClientProvider.get(this)).build().create(Api_Interface.class);
 
         Call<StudentLoginClass> call = api_interface.getStudentLogin(userName, passWord, codes, null, type);
 
@@ -224,12 +249,14 @@ public class LoginActivity extends AppCompatActivity {
                     else
                     {
                         getDialog();
-                        sessionManager.getAlertWithOk(response.message());
+                        Log.e(TAG, "Student login: HTTP " + response.code() + " " + response.message());
+                        sessionManager.getAlertWithOk(StartActivity.SOMETHING_WENT_WRONG);
                     }
                 }
                 catch (Exception e)
                 {
                     progressDialog.dismiss();
+                    Log.e(TAG, "Student login: error handling response", e);
                     sessionManager.getAlertWithOk(StartActivity.SOMETHING_WENT_WRONG);
                 }
 
@@ -237,8 +264,14 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<StudentLoginClass> call, Throwable t) {
-                getDialog();
-                sessionManager.getAlertWithOk(StartActivity.SOMETHING_WENT_WRONG);
+                if (progressDialog.isShowing()) progressDialog.dismiss();
+                Log.e(TAG, "Student login: request failed", t);
+                if (isNotJson(t) && !verifyAttempted)
+                    openVerification(call.request());
+                else if (isNotJson(t))
+                    showRawServerReply(call.request());
+                else
+                    sessionManager.getAlertWithOk(StartActivity.SOMETHING_WENT_WRONG);
 
             }
         });
@@ -266,7 +299,8 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void finishLoginType(){
-        LoginTypeActivity.ACTIVITY.finish();
+        if (LoginTypeActivity.ACTIVITY != null)
+            LoginTypeActivity.ACTIVITY.finish();
     }
 
     private void getFCMToken(String appToken) {
@@ -285,5 +319,65 @@ public class LoginActivity extends AppCompatActivity {
                     }
                 });
 
+    }
+
+    /** True when the server replied with something that is not JSON (e.g. an HTML page). */
+    private boolean isNotJson(Throwable t) {
+        return t instanceof com.google.gson.JsonParseException
+                || t instanceof com.google.gson.stream.MalformedJsonException
+                || t instanceof java.io.EOFException
+                || (t.getCause() instanceof com.google.gson.stream.MalformedJsonException);
+    }
+
+    /**
+     * Repeats the same request and writes what the server really sent back (status, final URL,
+     * server header, start of the body) to the server log. The user only sees SOMETHING_WENT_WRONG.
+     */
+    private void showRawServerReply(okhttp3.Request request) {
+        HttpClientProvider.get(this).newCall(request).enqueue(new okhttp3.Callback() {
+            @Override
+            public void onFailure(@NonNull okhttp3.Call c, @NonNull java.io.IOException e) {
+                Log.e(TAG, "Diagnostic request failed", e);
+                runOnUiThread(() -> sessionManager.getAlertWithOk(StartActivity.SOMETHING_WENT_WRONG));
+            }
+
+            @Override
+            public void onResponse(@NonNull okhttp3.Call c, @NonNull okhttp3.Response r) throws java.io.IOException {
+                String body = r.body() != null ? r.body().string() : "";
+                Log.e(TAG, "Diagnostic reply " + r.code() + " " + r.request().url() + "\n" + body);
+                String text = body.replaceAll("(?s)<(script|style)[^>]*>.*?</\\1>", " ")
+                        .replaceAll("<[^>]+>", " ")
+                        .replaceAll("\\s+", " ")
+                        .trim();
+                if (text.length() > 400) text = text.substring(0, 400) + "...";
+                String server = r.header("Server");
+                String msg = "Server did not send JSON.\n\n"
+                        + "HTTP " + r.code() + "\n"
+                        + "URL: " + r.request().url().host() + r.request().url().encodedPath() + "\n"
+                        + "Server: " + (server == null ? "-" : server) + "\n\n"
+                        + text;
+                Log.e(TAG, msg); // details go to the server log only
+                runOnUiThread(() -> sessionManager.getAlertWithOk(StartActivity.SOMETHING_WENT_WRONG));
+            }
+        });
+    }
+
+    /** Shows the server's verification page in a WebView, then retries (see verifyLauncher). */
+    private void openVerification(okhttp3.Request request) {
+        verifyAttempted = true;
+        okhttp3.HttpUrl u = request.url();
+        String url = u.scheme() + "://" + u.host() + "/";
+        android.content.Intent i = new android.content.Intent(this, VerifyActivity.class);
+        i.putExtra(VerifyActivity.EXTRA_URL, url);
+        verifyLauncher.launch(i);
+    }
+
+    private void onVerifyResult(int resultCode) {
+        if (resultCode == RESULT_OK) {
+            doLogin();
+        } else {
+            Log.w(TAG, "Firewall verification was not completed (result " + resultCode + ")");
+            sessionManager.getAlertWithOk(StartActivity.SOMETHING_WENT_WRONG);
+        }
     }
 }

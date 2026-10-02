@@ -13,7 +13,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
@@ -33,6 +32,8 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class ForgetPasswordActivity extends AppCompatActivity {
+
+    private static final String TAG = "ForgetPasswordActivity";
     RelativeLayout password_layout,enrollment;
     EditText enroll_detail,pass_new,otp;
     Button submit, submit_otp;
@@ -179,11 +180,13 @@ public class ForgetPasswordActivity extends AppCompatActivity {
                         }
                     } else{
                         getProgress();
-                        sessionManager.getAlertWithOk(response.message());
+                        Log.e(TAG, "Get OTP: HTTP " + response.code() + " " + response.message());
+                        sessionManager.getAlertWithOk(SOMETHING_WENT_WRONG);
                     }
                 }
                 catch (Exception e){
                     progressDialog.dismiss();
+                    Log.e(TAG, "Get OTP: error handling response", e);
                     sessionManager.getAlertWithOk(SOMETHING_WENT_WRONG);
                 }
             }
@@ -192,6 +195,7 @@ public class ForgetPasswordActivity extends AppCompatActivity {
             public void onFailure(Call<OtpResponse> call, Throwable t) {
 
                 getProgress();
+                Log.e(TAG, "Get OTP: request failed", t);
                 sessionManager.getAlertWithOk(SOMETHING_WENT_WRONG);
 
             }
@@ -236,19 +240,23 @@ public class ForgetPasswordActivity extends AppCompatActivity {
                         else
                         {
                             getProgress();
-                            Toast.makeText(context, " Status False", Toast.LENGTH_SHORT).show();
+                            Log.w(TAG, "New password: server returned status false: " + response.body().getMessage());
+                            sessionManager.getAlertWithOk(response.body().getMessage() != null
+                                    ? response.body().getMessage() : SOMETHING_WENT_WRONG);
                         }
                     }
                     else
                     {
                         getProgress();
-                        Toast.makeText(context, " Server Failed...", Toast.LENGTH_SHORT).show();
+                        Log.e(TAG, "New password: HTTP " + response.code() + " " + response.message());
+                        sessionManager.getAlertWithOk(SOMETHING_WENT_WRONG);
                     }
                 }
                 catch (Exception e)
                 {
                     progressDialog.dismiss();
-                    Toast.makeText(context, " Server Error...", Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, "New password: error handling response", e);
+                    sessionManager.getAlertWithOk(SOMETHING_WENT_WRONG);
                 }
             }
 
@@ -256,7 +264,8 @@ public class ForgetPasswordActivity extends AppCompatActivity {
             public void onFailure(Call<ForgetResponse> call, Throwable t) {
 
                 getProgress();
-                Toast.makeText(context, " Server isn't responding...", Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "New password: request failed", t);
+                sessionManager.getAlertWithOk(SOMETHING_WENT_WRONG);
 
             }
         });
@@ -305,12 +314,14 @@ public class ForgetPasswordActivity extends AppCompatActivity {
                     else
                     {
                         getProgress();
-                        sessionManager.getAlertWithOk(response.message());
+                        Log.e(TAG, "Change password: HTTP " + response.code() + " " + response.message());
+                        sessionManager.getAlertWithOk(SOMETHING_WENT_WRONG);
                     }
                 }
                 catch (Exception e)
                 {
                     progressDialog.dismiss();
+                    Log.e(TAG, "Change password: error handling response", e);
                     sessionManager.getAlertWithOk(SOMETHING_WENT_WRONG);
                 }
             }
@@ -318,6 +329,7 @@ public class ForgetPasswordActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<ForgetResponse> call, Throwable t) {
                 getProgress();
+                Log.e(TAG, "Change password: request failed", t);
                 sessionManager.getAlertWithOk(SOMETHING_WENT_WRONG);
             }
         });

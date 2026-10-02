@@ -181,14 +181,19 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/size_12"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
                         android:gravity="center"
+                        android:onClick="getForgetCall"
                         android:orientation="horizontal"
-                        android:padding="@dimen/size_4">
+                        android:padding="@dimen/size_8">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:fontFamily="@font/quicksand_medium"
+                            android:maxLines="1"
                             android:text="@string/forget_password"
                             android:textColor="@color/text_muted"
                             android:textSize="@dimen/margin_14_sp" />
@@ -196,10 +201,9 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:background="?attr/selectableItemBackground"
                             android:fontFamily="@font/quicksand_bold"
-                            android:onClick="getForgetCall"
-                            android:padding="@dimen/size_4"
+                            android:maxLines="1"
+                            android:paddingStart="@dimen/size_4"
                             android:text="@string/click_here"
                             android:textColor="@color/brand_green_dark"
                             android:textSize="@dimen/margin_14_sp" />

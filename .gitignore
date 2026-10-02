@@ -14,3 +14,16 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Signing keys and passwords - never commit
+certificate/
+*.jks
+*.keystore
+*.pepk
+password.txt
+
+# Built APK / AAB files
+/app/release/
+/app/debug/
+*.apk
+*.aab

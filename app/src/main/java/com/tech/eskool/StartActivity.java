@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -51,6 +50,7 @@ public class StartActivity extends AppCompatActivity implements Runnable{
         });
 
         activity = StartActivity.this;
+        HttpClientProvider.get(this); // shared API client with browser cookies + User-Agent
         sessionManager = new SessionManager(this);
         myDatabase = new MyDatabase(this, null, null, 0);
 
