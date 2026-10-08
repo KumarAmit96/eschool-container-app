@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- First (placeholder) row of the sibling dropdown, rendered as a section caption -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fontFamily="@font/quicksand_regular"
+    android:letterSpacing="0.08"
+    android:paddingStart="16dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="6dp"
+    android:text="@string/sibling_dropdown_header"
+    android:textAllCaps="true"
+    android:textColor="@color/text_muted"
+    android:textSize="12sp"
+    android:textStyle="bold" />

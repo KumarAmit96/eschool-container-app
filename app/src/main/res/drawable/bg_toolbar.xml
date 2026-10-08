@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Top bar: same charcoal-to-green gradient as the drawer header, with a lime accent line -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="0"
+                android:centerColor="#2E3A2A"
+                android:endColor="#3E6B16"
+                android:startColor="@color/brand_primary"
+                android:type="linear" />
+        </shape>
+    </item>
+    <item
+        android:height="2dp"
+        android:gravity="bottom">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="0"
+                android:endColor="@color/brand_green"
+                android:startColor="@color/brand_accent" />
+        </shape>
+    </item>
+</layer-list>

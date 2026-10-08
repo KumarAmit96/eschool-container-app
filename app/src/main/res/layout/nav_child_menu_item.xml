@@ -1,42 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<!-- Sub-menu drawer row, indented under its parent. Inflated without a parent (see nav_menu_item). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/menu_layout"
     android:layout_width="match_parent"
-    android:layout_height="@dimen/size_60"
-    android:maxHeight="@dimen/size_60"
-    app:rippleColor="@color/purple_500"
-    app:cardCornerRadius="@dimen/size_2"
-    app:cardElevation="@dimen/size_6">
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:minHeight="44dp"
+    android:orientation="horizontal"
+    android:paddingStart="36dp"
+    android:paddingTop="4dp"
+    android:paddingEnd="12dp"
+    android:paddingBottom="4dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="horizontal"
-        android:padding="@dimen/size_12">
+    <ImageView
+        android:id="@+id/icon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:contentDescription="@null"
+        android:scaleType="fitCenter"
+        android:src="@mipmap/ic_launcher" />
 
-        <ImageView
-            android:id="@+id/icon"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_marginStart="@dimen/size_8"
-            android:layout_weight="0.2"
-            android:contentDescription="@string/app_name"
-            android:src="@mipmap/ic_launcher" />
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:fontFamily="@font/roboto"
+        android:maxLines="1"
+        android:text="@string/menu_home"
+        android:textColor="@color/text_dark"
+        android:textSize="14sp" />
 
-        <TextView
-            android:id="@+id/title"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_marginLeft="@dimen/size_2"
-            android:layout_marginRight="@dimen/size_2"
-            android:layout_weight="0.8"
-            android:gravity="center|start"
-            android:text="@string/menu_home"
-            android:textAllCaps="true"
-            android:textAppearance="@font/quicksand_bold"
-            android:textColor="@android:color/black"
-            android:textSize="@dimen/margin_16_sp" />
-
-    </LinearLayout>
-</com.google.android.material.card.MaterialCardView>
+</LinearLayout>

@@ -1,6 +1,5 @@
 package com.tech.eskool;
 
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.MenuItem;
@@ -10,14 +9,12 @@ import android.widget.AdapterView;
 import android.widget.ExpandableListView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
+import android.widget.Toast;
 import android.widget.TextView;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.android.material.navigation.NavigationView;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.core.view.GravityCompat;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -77,15 +74,7 @@ public class StudentsDashboardActivity extends AppCompatActivity {
         sessionManager = new SessionManager(this);
         myDatabase = new MyDatabase(this, null, null, 0);
         sessionResponseArrayList = new ArrayList<>();
-        try {
-            Intent intent = getIntent();
-            if (!Objects.requireNonNull(intent.getStringExtra("MESSAGE")).isEmpty()) {
-                sessionManager.getNotificationAlertWithOk(intent.getStringExtra("TITLE"), intent.getStringExtra("MESSAGE"));
-            }
-        }catch (Exception e)
-        {
-            Log.i("NOTIFICATION_TEA", "ERROR => "+e.getLocalizedMessage());
-        }
+        sessionManager.prepareDashboardStart(getIntent(), savedInstanceState == null);
 
         ActivityStudentsDashboardBinding binding = ActivityStudentsDashboardBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -105,7 +94,10 @@ public class StudentsDashboardActivity extends AppCompatActivity {
         imageView = navigationView.findViewById(R.id.imageView);
         map = sessionManager.getStudentDetails();
 
-        Picasso.get().load(map.get(SessionManager.STUDENT_PHOTO)).into(imageView);
+        String photo = map.get(SessionManager.STUDENT_PHOTO);
+        if (photo != null && !photo.trim().isEmpty()) {
+            Picasso.get().load(photo).placeholder(R.drawable.ic_teacher).error(R.drawable.ic_teacher).into(imageView);
+        }
         name.setText(map.get(SessionManager.STUDENT_NAME));
         spinner_session = (Spinner) navigationView.findViewById(R.id.session);
         sibling_layout = navigationView.findViewById(R.id.sibling_layout);
@@ -114,7 +106,7 @@ public class StudentsDashboardActivity extends AppCompatActivity {
         studentLoginResponse.setSectionId("-1");
         studentLoginResponse.setClassId("-1");
         studentLoginResponse.setSessionId("-1");
-        studentLoginResponse.setStudentName(" SIBLING ");
+        studentLoginResponse.setStudentName(getString(R.string.switch_sibling));
         studentLoginResponse.setAppToken(null);
         studentLoginResponse.setToken(null);
         studentLoginResponse.setPhoto(null);
@@ -175,13 +167,18 @@ public class StudentsDashboardActivity extends AppCompatActivity {
         }
     }
     private void setInVisible(){
-        sessionCustomAdapter = new SiblingAdapter( sessionResponseArrayList, this);
+        sessionCustomAdapter = new SiblingAdapter(sessionResponseArrayList, this, map.get(SessionManager.STUDENT_ID));
         spinner_session.setAdapter(sessionCustomAdapter);
+        // Let the whole pill (icon + label + arrow) open the dropdown, not just the label.
+        sibling_layout.setOnClickListener(v -> spinner_session.performClick());
         spinner_session.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 try {
-                    if(position != 0){
+                    if (position != 0 && sessionCustomAdapter.isCurrentStudent(position)) {
+                        // Already viewing this student; reset to the placeholder.
+                        spinner_session.setSelection(0);
+                    } else if(position != 0){
                         getSibling(sessionResponseArrayList.get(position).getStudentId());
                     }else {
                         Log.i("SIBLING", "NOT SELECTED");
@@ -206,46 +203,32 @@ public class StudentsDashboardActivity extends AppCompatActivity {
             @Override
             public void onResponse(@NonNull Call<StudentSiblingRecord> call, @NonNull Response<StudentSiblingRecord> response) {
                 try {
-                    if(response.body()!=null)
-                    {
-                        if(response.body().getStatus())
-                        {
-                            if(!response.body().getResponse().isEmpty())
-                            {
-                                for(StudentLoginResponse student : response.body().getResponse()) {
-                                    count++;
-                                    sessionResponseArrayList.add(count, student);
-                                    myDatabase.setDataIntoSiblingTable(student);
-                                }
-                                sessionCustomAdapter.notifyDataSetChanged();
-                            }else
-                            {
-                                Log.i("SIBILING", "NO RECORD FOUND!");
-                            }
+                    StudentSiblingRecord body = response.body();
+                    if (body == null) {
+                        Log.w("SIBLING", "HTTP " + response.code() + " " + response.message());
+                    } else if (!Boolean.TRUE.equals(body.getStatus())) {
+                        Log.w("SIBLING", "status false: " + body.getMessage());
+                        sessionManager.getSessionLogout();
+                    } else if (body.getResponse() == null || body.getResponse().isEmpty()) {
+                        Log.i("SIBLING", "NO RECORD FOUND!");
+                    } else {
+                        myDatabase.deleteSiblingData();
+                        for (StudentLoginResponse student : body.getResponse()) {
+                            count++;
+                            sessionResponseArrayList.add(count, student);
+                            myDatabase.setDataIntoSiblingTable(student);
                         }
-                        else
-                        {
-                            sessionManager.getSessionLogout();
-                            Log.i("TIME TABLE", response.body().getMessage());
-                        }
+                        sessionCustomAdapter.notifyDataSetChanged();
+                        sibling_layout.setVisibility(View.VISIBLE);
                     }
-                    else
-                    {
-                        assert response.body() != null;
-                        Log.i("TIME TABLE", response.body().getMessage());
-                    }
-                }
-                catch (Exception e)
-                {
-                    assert response.body() != null;
-                    Log.i("TIME TABLE", response.body().getMessage());
+                } catch (Exception e) {
+                    Log.e("SIBLING", "Error handling response", e);
                 }
             }
 
             @Override
-            public void onFailure(Call<StudentSiblingRecord> call, Throwable t) {
-                Log.i("TIME TABLE", Objects.requireNonNull(t.getLocalizedMessage()));
-
+            public void onFailure(@NonNull Call<StudentSiblingRecord> call, @NonNull Throwable t) {
+                Log.e("SIBLING", "Request failed", t);
             }
         });
     }
@@ -253,6 +236,11 @@ public class StudentsDashboardActivity extends AppCompatActivity {
     private void getSibling(String getId)
     {
         StudentLoginResponse studentLoginResponse = myDatabase.getSiblingData(getId);
+        if (studentLoginResponse == null) {
+            Toast.makeText(this, "Could not switch student. Please try again.", Toast.LENGTH_SHORT).show();
+            spinner_session.setSelection(0);
+            return;
+        }
         String collegeCode = sessionManager.getCollegeCode();
         String collegeName = sessionManager.getCollegeName();
 
@@ -266,20 +254,12 @@ public class StudentsDashboardActivity extends AppCompatActivity {
         myDatabase.deleteSiblingData();
         myDatabase.deleteMenuItem();
         new ApiHandler(sessionManager, myDatabase).setUserMenuItem(collegeCode, studentLoginResponse.getToken());
-        FirebaseMessaging.getInstance().subscribeToTopic(sessionManager.getStudentAppToken())
-                .addOnCompleteListener(new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        String msg = "Successfully subscribed...";
-                        if (!task.isSuccessful()) {
-                            msg = "Not subscribed successfully...";
-                            sessionManager.logoutUser();
-                            return;
-                        }
-                        Log.d("SIBILING ENTRY", msg);
-
-                    }
-                });
+        String topic = sessionManager.getStudentAppToken();
+        if (topic != null && !topic.isEmpty()) {
+            FirebaseMessaging.getInstance().subscribeToTopic(topic)
+                    .addOnCompleteListener(task -> Log.d("SIBLING ENTRY",
+                            task.isSuccessful() ? "Subscribed to notifications" : "Notification subscription failed"));
+        }
 
         sessionManager.getSiblingEntry();
 
@@ -291,27 +271,7 @@ public class StudentsDashboardActivity extends AppCompatActivity {
         int id = item.getItemId();
         if(id == R.id.action_settings)
         {
-            AlertDialog.Builder alert = new AlertDialog.Builder(this, R.style.myAlertDialog);
-            alert.setTitle(R.string.app_name);
-            alert.setIcon(R.mipmap.ic_launcher);
-            alert.setMessage("Do you want to Logout?");
-            alert.setCancelable(false);
-            alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    dialog.dismiss();
-                    sessionManager.getSessionLogout();
-                }
-            });
-            alert.setNegativeButton("No", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    dialog.dismiss();
-                }
-            });
-            AlertDialog dialog = alert.create();
-            dialog.show();
-
+            sessionManager.getSessionLogout();
         }else if(id == R.id.nav_home){
             sessionManager.setMenuUrl(null);
             navController.navigate(R.id.nav_menu);

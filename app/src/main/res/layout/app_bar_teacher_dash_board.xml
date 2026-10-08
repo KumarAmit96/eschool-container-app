@@ -9,14 +9,17 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:theme="@style/Theme.school.AppBarOverlay">
+        android:background="@drawable/bg_toolbar"
+        android:theme="@style/Theme.school.AppBarOverlay"
+        app:elevation="6dp">
 
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            app:popupTheme="@style/Theme.school.PopupOverlay" />
+            android:background="@android:color/transparent"
+            app:popupTheme="@style/Theme.school.PopupOverlay"
+            app:titleTextAppearance="@style/ToolbarTitle" />
 
     </com.google.android.material.appbar.AppBarLayout>
 

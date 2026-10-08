@@ -5,6 +5,7 @@ import static com.tech.eskool.StartActivity.NO_INTERNET;
 
 import android.annotation.SuppressLint;
 import android.app.DownloadManager;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -14,11 +15,13 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.util.Log;
+import com.tech.eskool.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
+import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -37,12 +40,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 
 import com.tech.eskool.R;
 import com.tech.eskool.database.MyDatabase;
+import com.tech.eskool.rest_service.ApiClient;
 import com.tech.eskool.service.SessionManager;
 import com.tech.eskool.util.JavaScriptInterface;
 
@@ -61,6 +66,11 @@ public class MenuFragment extends Fragment {
     ValueCallback<Uri[]> uploadMessage;
     ActivityResultLauncher<Intent> fileChooserLauncher;
     String _url;
+    boolean clearHistoryOnLoad = false;
+    boolean sessionExpiredHandled = false;
+    // The website's own login form. The server sends the app there when the login token is no longer valid.
+    private static final java.util.Set<String> WEB_LOGIN_PATHS = new java.util.HashSet<>(java.util.Arrays.asList(
+            "", "/", "/index.php", "/index.html", "/login.php"));
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -68,26 +78,17 @@ public class MenuFragment extends Fragment {
         this.context = context;
         sessionManager = new SessionManager(context);
         myDatabase = new MyDatabase(context, null, null, 0);
-        // Request permissions if needed
-        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(requireActivity(), new String[]{android.Manifest.permission.READ_MEDIA_IMAGES}, 1);
-        }
-
         fileChooserLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
+                    if (uploadMessage == null) return;
+                    Uri[] results = null;
                     if (result.getResultCode() == RESULT_OK) {
-                        Intent data = result.getData();
-                        Uri resultUri = data == null ? null : data.getData();
-                        if (uploadMessage != null) {
-                            if (resultUri != null) {
-                                uploadMessage.onReceiveValue(new Uri[]{resultUri});
-                            } else {
-                                uploadMessage.onReceiveValue(null);
-                            }
-                        }
-                        uploadMessage = null;
+                        results = WebChromeClient.FileChooserParams.parseResult(result.getResultCode(), result.getData());
                     }
+                    // Must always be called (null = cancelled) or the page's file input stops working.
+                    uploadMessage.onReceiveValue(results);
+                    uploadMessage = null;
                 }
         );
 
@@ -108,8 +109,14 @@ public class MenuFragment extends Fragment {
         OnBackPressedCallback callback = new OnBackPressedCallback(true /* enabled by default */) {
             @Override
             public void handleOnBackPressed() {
-                if (webView.canGoBack()) {
+                // This callback outranks the activity's drawer handling, so close an open drawer first.
+                DrawerLayout drawer = requireActivity().findViewById(R.id.drawer_layout);
+                if (drawer != null && drawer.isDrawerOpen(GravityCompat.START)) {
+                    drawer.closeDrawer(GravityCompat.START);
+                } else if (webView != null && webView.canGoBack()) {
                     webView.goBack();
+                } else if (webView != null && sessionManager.getMenuUrl() != null) {
+                    showHome();   // Back from a menu page returns to Home
                 } else {
                     sessionManager.exit();
                 }
@@ -127,7 +134,7 @@ public class MenuFragment extends Fragment {
             progressBar = v.findViewById(R.id.progressBar);
             webView.setWebViewClient(new MywebViewClient());
             webView.setWebChromeClient(new WebChromeClient());
-            webView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+            webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
             webView.getSettings().setDatabaseEnabled(true);
             webView.getSettings().setDomStorageEnabled(true);
             webView.getSettings().setUseWideViewPort(true);
@@ -138,31 +145,25 @@ public class MenuFragment extends Fragment {
                 // For Android versions 5.0 and above (API >= 21), use this method
                 @Override
                 public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                    if (uploadMessage != null) {
+                        uploadMessage.onReceiveValue(null); // cancel a previous, unanswered request
+                    }
                     uploadMessage = filePathCallback;
                     setUrl(_url);
-                    openFileChooser();
-                    return true;
+                    return openFileChooser(fileChooserParams);
                 }
             });
             webView.setPadding(0, 0, 0, 0);
             webView.getSettings().setDefaultTextEncodingName("utf-8");
             webView.addJavascriptInterface(new JavaScriptInterface(getContext(), webView), "Android");
-            String token = sessionManager.getStudentToken() != null ?
-                    sessionManager.getStudentToken() : sessionManager.getUserToken();
-            String webUrl = getLabel(1) + "?college_code=" + sessionManager.getCollegeCode() + "&session_id=" + sessionManager.getSessionId() + "&token=" + token;
-            Log.i("WEB", webUrl);
-            webView.loadUrl(webUrl);
+            loadCurrentPage();
             webView.setDownloadListener(new DownloadListener() {
                 @Override
                 public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
                     if(url.startsWith("blob:")){
-                        String js = JavaScriptInterface.getBase64StringFromBlobUrl(url);
-                        webView.loadUrl(js);
-                        if(sessionManager.getBlobFile() != null){
-                            sessionManager.showDownloadCompleteDialog(Uri.parse(sessionManager.getBlobFile()));
-                        }
+                        webView.evaluateJavascript(JavaScriptInterface.getBase64StringFromBlobUrl(url, mimeType), null);
                     } else {
-                        downloadFile(url);
+                        downloadFile(url, userAgent, contentDisposition, mimeType);
                     }
                 }
             });
@@ -172,15 +173,89 @@ public class MenuFragment extends Fragment {
         }
     }
 
-    // Call this method to launch the file chooser
-    private void openFileChooser() {
+    /** Loads the page chosen in the session (Home when none), signed in with the user's token. */
+    private void loadCurrentPage() {
+        String token = sessionManager.getStudentToken() != null ?
+                sessionManager.getStudentToken() : sessionManager.getUserToken();
+        String page = getLabel(1);
+        String webUrl = page + (page.contains("?") ? "&" : "?")
+                + "college_code=" + Uri.encode(sessionManager.getCollegeCode())
+                + "&session_id=" + Uri.encode(sessionManager.getSessionId())
+                + "&token=" + Uri.encode(token);
+        Log.i("WEB", "Loading " + page); // never log the token
+        webView.loadUrl(webUrl);
+    }
+
+    /** True for the school website's own login page, which must never show inside the app. */
+    private boolean isWebLoginPage(Uri uri) {
+        if (uri == null || uri.getHost() == null || !uri.getHost().equalsIgnoreCase(ApiClient.serverHost())) {
+            return false;
+        }
+        String path = uri.getPath() == null ? "" : uri.getPath().toLowerCase();
+        return WEB_LOGIN_PATHS.contains(path);
+    }
+
+    /** The website asked for a fresh login: sign out of the app and show the app's own login screen. */
+    private void onSessionExpired() {
+        if (sessionExpiredHandled || getActivity() == null) return;
+        sessionExpiredHandled = true;
+        Toast.makeText(context, R.string.session_expired, Toast.LENGTH_LONG).show();
+        sessionManager.logout();
+    }
+
+    /** Back from a menu page returns to Home; Home's history starts fresh so Back then asks to exit. */
+    private void showHome() {
+        sessionManager.setMenuUrl(null);
+        clearHistoryOnLoad = true;
+        loadCurrentPage();
+        if (getActivity() != null && ((AppCompatActivity) getActivity()).getSupportActionBar() != null) {
+            ((AppCompatActivity) getActivity()).getSupportActionBar().setTitle(getLabel(0));
+        }
+    }
+
+    /** tel:, mailto:, WhatsApp, UPI and intent:// links open in their own apps. */
+    private void openExternally(Uri uri) {
+        try {
+            Intent intent;
+            if ("intent".equals(uri.getScheme())) {
+                intent = Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME);
+                intent.addCategory(Intent.CATEGORY_BROWSABLE);
+                intent.setComponent(null);
+                intent.setSelector(null);
+            } else {
+                intent = new Intent(Intent.ACTION_VIEW, uri);
+            }
+            startActivity(intent);
+        } catch (Exception e) {
+            Log.w("WEB", "No app for " + uri.getScheme(), e);
+            Toast.makeText(context, "No app found to open this link", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // Launches the system file picker; honours the page's accept="..." and multiple attributes.
+    private boolean openFileChooser(WebChromeClient.FileChooserParams params) {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("*/*"); // Set the MIME type as needed
-        fileChooserLauncher.launch(intent);
+        intent.setType("*/*");
+        String[] accept = params != null ? params.getAcceptTypes() : null;
+        if (accept != null && accept.length > 0 && accept[0] != null && !accept[0].isEmpty()) {
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, accept);
+        }
+        if (params != null && params.getMode() == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE) {
+            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        }
+        try {
+            fileChooserLauncher.launch(intent);
+            return true;
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(context, "No file picker app found", Toast.LENGTH_SHORT).show();
+            uploadMessage = null;
+            return false;
+        }
     }
 
     public void getAlertWithOkForActivity(String msg) {
+        if (!isAdded()) return;
         AlertDialog.Builder alert = new AlertDialog.Builder(context, R.style.myAlertDialog);
         alert.setTitle(R.string.app_name);
         alert.setIcon(R.mipmap.ic_launcher);
@@ -199,6 +274,13 @@ public class MenuFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        if (webView != null) {
+            webView.stopLoading();
+            webView.setWebChromeClient(null);
+            webView.setDownloadListener(null);
+            webView.destroy();
+            webView = null;
+        }
         super.onDestroyView();
     }
 
@@ -218,7 +300,13 @@ public class MenuFragment extends Fragment {
     class MywebViewClient extends WebViewClient {
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            if (isWebLoginPage(Uri.parse(url))) {
+                view.stopLoading();
+                onSessionExpired();
+                return;
+            }
             super.onPageStarted(view, url, favicon);
+            if (webView == null) return;
             webView.setVisibility(View.INVISIBLE);
             progressBar.setVisibility(View.VISIBLE);
         }
@@ -226,7 +314,12 @@ public class MenuFragment extends Fragment {
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
+            if (clearHistoryOnLoad) {
+                clearHistoryOnLoad = false;
+                view.clearHistory();
+            }
             isLoaded = false;
+            if (webView == null) return;
             webView.setVisibility(View.VISIBLE);
             progressBar.setVisibility(View.INVISIBLE);
 
@@ -257,7 +350,18 @@ public class MenuFragment extends Fragment {
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            String menuName = myDatabase.getNameByUrl(request.getUrl().toString());
+            Uri uri = request.getUrl();
+            if (request.isForMainFrame() && isWebLoginPage(uri)) {
+                onSessionExpired();
+                return true;
+            }
+            String scheme = uri.getScheme() != null ? uri.getScheme().toLowerCase() : "";
+            if (!scheme.equals("http") && !scheme.equals("https") && !scheme.equals("about")
+                    && !scheme.equals("data") && !scheme.equals("blob") && !scheme.equals("javascript")) {
+                openExternally(uri);
+                return true;
+            }
+            String menuName = myDatabase.getNameByUrl(uri.toString());
             if(menuName != null){
                 if (getActivity() != null) {
                     Objects.requireNonNull(((AppCompatActivity) getActivity()).getSupportActionBar()).setTitle(menuName);
@@ -267,39 +371,41 @@ public class MenuFragment extends Fragment {
         }
     }
 
-    private void downloadFile(String url) {
+    private void downloadFile(String url, String userAgent, String contentDisposition, String mimeType) {
         if (url == null || url.isEmpty()) {
             Toast.makeText(context, "Invalid URL", Toast.LENGTH_SHORT).show();
             return;
         }
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-        request.setTitle("Downloading File");
-        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+        String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
+        try {
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+            request.setTitle(fileName);
+            request.setMimeType(mimeType);
+            String cookies = CookieManager.getInstance().getCookie(url);
+            if (cookies != null) request.addRequestHeader("Cookie", cookies);
+            if (userAgent != null) request.addRequestHeader("User-Agent", userAgent);
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
 
-        // Ensure the directory is valid for Android 10+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // For Android 10 and above, you can't write directly to external storage like before.
-            // You'll need to use MediaStore or app-specific directories.
-            request.setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, "downloaded_file." + getFileExtension(url));
-        } else {
-            // For older versions, this works fine.
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "downloaded_file." + getFileExtension(url));
-        }
+            boolean canWritePublic = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                    || ContextCompat.checkSelfPermission(context, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+            if (canWritePublic) {
+                // Public Downloads folder, so the user can find the file afterwards.
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+            } else {
+                request.setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, fileName);
+            }
 
-        DownloadManager downloadManager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
-        if (downloadManager != null) {
-            downloadManager.enqueue(request);
-            Toast.makeText(context, "Download started", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(context, "Download Manager not available", Toast.LENGTH_SHORT).show();
+            DownloadManager downloadManager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+            if (downloadManager != null) {
+                downloadManager.enqueue(request);
+                Toast.makeText(context, "Downloading " + fileName, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(context, "Download Manager not available", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Log.e("DOWNLOAD", "Download failed", e);
+            Toast.makeText(context, "Download failed", Toast.LENGTH_SHORT).show();
         }
-    }
-
-    private String getFileExtension(String url) {
-        if (url.lastIndexOf(".") != -1 && url.lastIndexOf(".") != url.length() - 1) {
-            return url.substring(url.lastIndexOf(".") + 1).toLowerCase();
-        }
-        return "";
     }
 
     private void setUrl(String url){
@@ -308,11 +414,12 @@ public class MenuFragment extends Fragment {
 
     private String getLabel(int i){
         String [] attr;
-        if(sessionManager.getMenuUrl() != null) {
-            attr = sessionManager.getMenuUrl().split("::");
+        String menu = sessionManager.getMenuUrl();
+        if (menu != null && menu.contains("::") && !menu.endsWith("::null")) {
+            attr = menu.split("::", 2);
         } else {
             attr = new String[]{"Home", sessionManager.getLandingUrl()};
         }
-        return attr[i];
+        return attr[i] != null ? attr[i] : "";
     }
 }

@@ -37,6 +37,9 @@ public class StartActivity extends AppCompatActivity implements Runnable{
     String code;
     Intent intent;
     MyDatabase myDatabase;
+    android.view.View splashView;
+    private final long createdAt = android.os.SystemClock.uptimeMillis();
+    private boolean timerStarted = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,8 +60,13 @@ public class StartActivity extends AppCompatActivity implements Runnable{
         intent = getIntent();
         if(sessionManager.checkConnectivity(this)) {
             getData();
-            askNotificationPermission();
-            findViewById(R.id.image).postDelayed(this, 5000);
+            splashView = findViewById(R.id.image);
+            // Ask once the splash has drawn; asking during onCreate keeps the system launch
+            // screen up behind the permission prompt and hides this splash.
+            splashView.postDelayed(() -> {
+                if (!isFinishing() && !isDestroyed()) askNotificationPermission();
+            }, 1400);
+            // The next-screen timer starts on the first visible frame (onWindowFocusChanged).
         } else {
             getAlertWithOkForActivity(NO_INTERNET);
         }
@@ -143,6 +151,27 @@ public class StartActivity extends AppCompatActivity implements Runnable{
             startActivity(new Intent(this, LoginTypeActivity.class));
             finish();
         }
+    }
+
+    /**
+     * Keeps the original 5 s from launch (time for the menu to download) but always shows the
+     * splash for at least 2 s, even on slow phones where the first frame is late.
+     */
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && !timerStarted && splashView != null) {
+            timerStarted = true;
+            long elapsed = android.os.SystemClock.uptimeMillis() - createdAt;
+            splashView.postDelayed(this, Math.max(2000, 5000 - elapsed));
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        // User left the splash screen: don't open the dashboard/login afterwards.
+        if (splashView != null) splashView.removeCallbacks(this);
+        super.onDestroy();
     }
 
     // Declare the launcher at the top of your Activity/Fragment:

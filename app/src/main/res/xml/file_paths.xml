@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Files the app shares with viewer apps (downloads saved on Android 9 and below). -->
+<paths>
+    <external-files-path
+        name="downloads"
+        path="Download/" />
+</paths>

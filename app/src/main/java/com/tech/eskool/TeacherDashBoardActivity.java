@@ -16,6 +16,7 @@ import com.google.android.material.navigation.NavigationView;
 import androidx.annotation.NonNull;
 import androidx.core.view.GravityCompat;
 import androidx.navigation.NavController;
+import androidx.navigation.NavOptions;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
@@ -61,14 +62,7 @@ public class TeacherDashBoardActivity extends AppCompatActivity {
         sessionManager = new SessionManager(this);
         myDatabase = new MyDatabase(this, null, null, 0);
         sessionResponseArrayList = myDatabase.getSessionData();
-        try {
-            Intent intent = getIntent();
-            if (!Objects.requireNonNull(intent.getStringExtra("MESSAGE")).isEmpty()) {
-                sessionManager.getNotificationAlertWithOk(intent.getStringExtra("TITLE"), intent.getStringExtra("MESSAGE"));
-            }
-        } catch (Exception e) {
-            Log.i("NOTIFICATION_TEA", "ERROR ::"+e.getLocalizedMessage());
-        }
+        sessionManager.prepareDashboardStart(getIntent(), savedInstanceState == null);
         ActivityTeacherDashBoardBinding binding = ActivityTeacherDashBoardBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
@@ -84,9 +78,17 @@ public class TeacherDashBoardActivity extends AppCompatActivity {
         designation = (TextView) navigationView.findViewById(R.id.designation);
         imageView = navigationView.findViewById(R.id.imageView);
 
-        name.setText(sessionManager.getUserDetails().get(SessionManager.USERNAME).concat("(").concat(sessionManager.getUserDetails().get(SessionManager.USERNAME)).concat(")") );
-        designation.setText("Designation : ".concat(sessionManager.getUserDetails().get(SessionManager.EMPTYPE)));
-        Picasso.get().load(sessionManager.getUserDetails().get(SessionManager.PHOTO)).error(R.drawable.ic_teacher).into(imageView);
+        Map<String, String> user = sessionManager.getUserDetails();
+        String userName = user.get(SessionManager.USERNAME) != null ? user.get(SessionManager.USERNAME) : "";
+        String empId = user.get(SessionManager.EMPID);
+        // Used to print the user name twice: "John(John)".
+        name.setText(empId != null && !empId.isEmpty() ? userName + " (" + empId + ")" : userName);
+        String empType = user.get(SessionManager.EMPTYPE);
+        designation.setText("Designation : " + (empType != null ? empType : "-"));
+        String photo = user.get(SessionManager.PHOTO);
+        if (photo != null && !photo.trim().isEmpty()) {
+            Picasso.get().load(photo).placeholder(R.drawable.ic_teacher).error(R.drawable.ic_teacher).into(imageView);
+        }
 
         spinner_session = navigationView.findViewById(R.id.session);
 
@@ -97,27 +99,34 @@ public class TeacherDashBoardActivity extends AppCompatActivity {
         NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
         getMenuItem();
-        try {
-            spinner_session.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                    try {
-                        String tag = (String) view.getTag();
-                        sessionManager.setSession(tag);
-                        Toast.makeText(TeacherDashBoardActivity.this, "Selected session: "+sessionResponseArrayList.get(position).getSessionName(), Toast.LENGTH_SHORT).show();
-                    } catch (Exception e) {
-                        Toast.makeText(TeacherDashBoardActivity.this, "Error::"+ e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
-                    }
-                }
-
-                @Override
-                public void onNothingSelected(AdapterView<?> parent) {
-
-                }
-            });
-        } catch(Exception e) {
-            Log.i("SPINNER", "NO ITEM :"+e.getLocalizedMessage());
+        // Show the session that is actually in use, instead of always the first one.
+        String savedSession = sessionManager.getSessionId();
+        for (int i = 0; i < sessionResponseArrayList.size(); i++) {
+            if (sessionResponseArrayList.get(i).getSessionId() != null
+                    && sessionResponseArrayList.get(i).getSessionId().equals(savedSession)) {
+                spinner_session.setSelection(i, false);
+                break;
+            }
         }
+        spinner_session.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                SessionResponse selected = sessionResponseArrayList.get(position);
+                String sessionId = selected.getSessionId();
+                // Spinner also fires once on start-up; only react to a real change.
+                if (sessionId == null || sessionId.equals(sessionManager.getSessionId())) return;
+                sessionManager.setSession(sessionId);
+                Toast.makeText(TeacherDashBoardActivity.this, "Selected session: " + selected.getSessionName(), Toast.LENGTH_SHORT).show();
+                // Reload the open page so it uses the new session.
+                navController.navigate(R.id.nav_menu, null,
+                        new NavOptions.Builder().setPopUpTo(R.id.nav_menu, true).build());
+                drawer.closeDrawer(GravityCompat.START);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
     }
 
     @Override

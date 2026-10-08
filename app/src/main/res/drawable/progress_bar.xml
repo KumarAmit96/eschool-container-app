@@ -2,7 +2,7 @@
     <!-- Background circle -->
     <item>
         <shape android:shape="oval">
-            <solid android:color="@color/purple_700" /> <!-- Background color -->
+            <solid android:color="@color/brand_primary_dark" /> <!-- Background color -->
             <size android:width="48dp" android:height="48dp" /> <!-- Size of the circle -->
         </shape>
     </item>
@@ -11,7 +11,7 @@
     <item>
         <clip>
             <shape android:shape="oval">
-                <solid android:color="@color/purple_500" /> <!-- Progress color -->
+                <solid android:color="@color/brand_accent" /> <!-- Progress color -->
                 <size android:width="48dp" android:height="48dp" /> <!-- Size of the circle -->
             </shape>
         </clip>

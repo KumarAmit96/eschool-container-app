@@ -49,4 +49,11 @@
     <string name="hint_enter_here">Enter here</string>
     <string name="hint_new_password">Enter new password</string>
     <string name="hint_enrollment">Enter your enrollment number</string>
+    <string name="notification_page_title">Notification</string>
+    <string name="session_expired">Your session has expired. Please sign in again.</string>
+    <string name="login_network_error">Could not reach the school server. Please check your internet connection and try again.</string>
+    <string name="switch_sibling">Switch student</string>
+    <string name="sibling_dropdown_header">Switch to</string>
+    <string name="sibling_current">Current</string>
+    <string name="sibling_enrollment">Enrollment No: %1$s</string>
 </resources>

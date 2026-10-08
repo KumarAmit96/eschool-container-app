@@ -1,6 +1,5 @@
 package com.tech.eskool;
 
-import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
@@ -13,13 +12,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.karumi.dexter.Dexter;
-import com.karumi.dexter.MultiplePermissionsReport;
-import com.karumi.dexter.PermissionToken;
-import com.karumi.dexter.listener.PermissionRequest;
-import com.karumi.dexter.listener.multi.MultiplePermissionsListener;
 
-import java.util.List;
 
 public class LoginTypeActivity extends AppCompatActivity implements View.OnClickListener{
 
@@ -37,20 +30,6 @@ public class LoginTypeActivity extends AppCompatActivity implements View.OnClick
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-        Dexter.withActivity(LoginTypeActivity.this)
-                .withPermissions(
-                        android.Manifest.permission.CAMERA,
-                        android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ).withListener(new MultiplePermissionsListener() {
-                    @Override public void onPermissionsChecked(MultiplePermissionsReport report) {
-                        if(report.areAllPermissionsGranted())
-                            Log.i("PERMISSION", "GRANTED");
-                        else if(report.isAnyPermissionPermanentlyDenied())
-                            Log.i("PERMISSION","NOT ALL GRANTED");/* ... */}
-                    @Override public void onPermissionRationaleShouldBeShown(List<PermissionRequest> permissions, PermissionToken token) {
-                        token.continuePermissionRequest();/* ... */}
-                }).check();
 
         parent = findViewById(R.id.parent);
         teacher = findViewById(R.id.teacher);

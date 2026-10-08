@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ZBS E-SCHOOL"
+rootProject.name = "ESchool Container App"
 include ':app'

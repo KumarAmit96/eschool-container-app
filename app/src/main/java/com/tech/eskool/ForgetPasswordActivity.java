@@ -33,6 +33,9 @@ import retrofit2.Response;
 
 public class ForgetPasswordActivity extends AppCompatActivity {
 
+    /** School code typed on the login screen (not stored yet, because the user isn't logged in). */
+    public static final String EXTRA_COLLEGE_CODE = "college_code";
+
     private static final String TAG = "ForgetPasswordActivity";
     RelativeLayout password_layout,enrollment;
     EditText enroll_detail,pass_new,otp;
@@ -138,6 +141,12 @@ public class ForgetPasswordActivity extends AppCompatActivity {
 
     }
 
+    private String collegeCode()
+    {
+        String code = getIntent().getStringExtra(EXTRA_COLLEGE_CODE);
+        return code != null ? code : sessionManager.getCollegeCode();
+    }
+
     private void getEnrollment()
     {
         password_layout.setVisibility(View.GONE);
@@ -162,7 +171,7 @@ public class ForgetPasswordActivity extends AppCompatActivity {
     {
         getProgress();
         Api_Interface api_interface = ApiClient.getClient().create(Api_Interface.class);
-        String code = sessionManager.getCollegeCode();
+        String code = collegeCode();
 
         Call<OtpResponse> call = api_interface.getForgetPasswordDetail(enrollment,code);
 
@@ -176,7 +185,9 @@ public class ForgetPasswordActivity extends AppCompatActivity {
                             getPasswordlayout();
                         } else {
                             getProgress();
-                            sessionManager.getSessionLogout();
+                            // Not logged in here, so a logout prompt makes no sense: show the server's reason.
+                            sessionManager.getAlertWithOk(response.body().getMessage() != null
+                                    ? response.body().getMessage() : SOMETHING_WENT_WRONG);
                         }
                     } else{
                         getProgress();
@@ -207,7 +218,7 @@ public class ForgetPasswordActivity extends AppCompatActivity {
     {
         getProgress();
         Api_Interface api_interface = ApiClient.getClient().create(Api_Interface.class);
-        String code = sessionManager.getCollegeCode();
+        String code = collegeCode();
 
         Call<ForgetResponse> call = api_interface.getOTPPasswordDetail(otp, newPassword,code);
 

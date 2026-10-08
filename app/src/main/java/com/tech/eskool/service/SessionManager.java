@@ -1,5 +1,7 @@
 package com.tech.eskool.service;
 
+import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -7,19 +9,14 @@ import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
-import android.util.Log;
+import android.widget.Toast;
+import com.tech.eskool.Log;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.tech.eskool.R;
 import com.tech.eskool.StartActivity;
-import com.tech.eskool.StudentsDashboardActivity;
-import com.tech.eskool.TeacherDashBoardActivity;
 
 import java.util.HashMap;
 
@@ -179,16 +176,15 @@ public class SessionManager {
         editor.commit();
 
         Intent i = new Intent(context, StartActivity.class);
-        // Closing all the Activities
-        i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        // Add new Flag to start new Activity
-        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        // Start fresh and close every open screen, so the old dashboard can't be reached with Back
+        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         // Staring Login Activity
         context.startActivity(i);
     }
 
     public void exit()
     {
+        if (!canShowDialog()) return;
         AlertDialog.Builder alert = new AlertDialog.Builder(context, R.style.myAlertDialog);
         alert.setTitle(R.string.app_name);
         alert.setIcon(R.mipmap.ic_launcher);
@@ -197,10 +193,8 @@ public class SessionManager {
         alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                if(context instanceof StudentsDashboardActivity){
-                    ((StudentsDashboardActivity) context).finish();
-                }else{
-                    ((TeacherDashBoardActivity) context).finish();
+                if (context instanceof Activity) {
+                    ((Activity) context).finish();
                 }
             }
         });
@@ -219,22 +213,15 @@ public class SessionManager {
         String getAppToken = getStudentAppToken();
         editor.clear();
         editor.commit();
-        FirebaseMessaging.getInstance().unsubscribeFromTopic(getAppToken).addOnSuccessListener(((StudentsDashboardActivity)context), new OnSuccessListener<Void>() {
-            @Override
-            public void onSuccess(Void aVoid) {
-                Log.i("FIREBASE SERVICE", "ID UNSUBSCRIBE SUCCESSFULLY.....");
-            }
-        });
+        unsubscribe(getAppToken, null);
 
     }
 
     public void getSiblingEntry()
     {
         Intent i = new Intent(context, StartActivity.class);
-        // Closing all the Activities
-        i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        // Add new Flag to start new Activity
-        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        // Start fresh and close every open screen, so the old dashboard can't be reached with Back
+        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         // Staring Login Activity
         context.startActivity(i);
     }
@@ -295,6 +282,39 @@ public class SessionManager {
     public String getNotification()
     {
         return preferences.getString(NOTIFICATION, null);
+    }
+
+    /**
+     * Chooses the dashboard's first page. Opened from a push notification, it lands on the
+     * school's notification page (or shows the message if the school has none); otherwise Home.
+     * Call before the dashboard inflates its layout, since the first page loads at that point.
+     */
+    public void prepareDashboardStart(Intent intent, boolean freshStart)
+    {
+        String title = intent != null ? intent.getStringExtra("TITLE") : null;
+        String message = intent != null ? intent.getStringExtra("MESSAGE") : null;
+        boolean fromNotification = (title != null && !title.isEmpty()) || (message != null && !message.isEmpty());
+
+        if (!fromNotification) {
+            if (freshStart) setMenuUrl(null);   // opening the app starts on Home
+            return;
+        }
+        String page = getNotification();
+        if (page != null && !page.trim().isEmpty()) {
+            setMenuUrl(context.getString(R.string.notification_page_title) + "::" + page.trim());
+        } else {
+            setMenuUrl(null);
+            getNotificationAlertWithOk(title != null && !title.isEmpty() ? title : context.getString(R.string.app_name),
+                    message != null ? message : "");
+        }
+    }
+
+    /** Logs out without asking (e.g. the website reported an expired session). */
+    public void logout()
+    {
+        String topic = getStudentToken() != null ? getStudentAppToken() : getAppToken();
+        unsubscribe(topic, null);
+        logoutUser();
     }
 
     public void setChangePassword(String url)
@@ -358,9 +378,14 @@ public class SessionManager {
     public String getStudentToken(){ return  preferences.getString(STUDENT_TOKEN, null);}
 
 
+    private static boolean logoutDialogShowing = false;
+
+    /** Asks the user to log out (used when the server says the session/token is no longer valid). */
     public  void getSessionLogout()
     {
-        final String appToken = getAppToken();
+        if (logoutDialogShowing || !canShowDialog()) return;
+        // Students are subscribed to their own topic, employees to theirs.
+        final String topic = getStudentToken() != null ? getStudentAppToken() : getAppToken();
         AlertDialog.Builder alert = new AlertDialog.Builder(context, R.style.myAlertDialog);
         alert.setTitle(R.string.app_name);
         alert.setIcon(R.mipmap.ic_launcher);
@@ -369,30 +394,12 @@ public class SessionManager {
         alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                if(context instanceof TeacherDashBoardActivity) {
-
-                    FirebaseMessaging.getInstance().unsubscribeFromTopic(appToken).addOnCompleteListener(new OnCompleteListener<Void>() {
-                        @Override
-                        public void onComplete(@NonNull Task<Void> task) {
-                            Log.i("FIREBASE SERVICE", "ID UNSUBSCRIBE SUCCESSFULLY.....");
-                            logoutUser();
-                            ((TeacherDashBoardActivity) context).finish();
-                        }
-                    });
-
-                } else if(context instanceof StudentsDashboardActivity) {
-
-                    FirebaseMessaging.getInstance().unsubscribeFromTopic(appToken).addOnCompleteListener(new OnCompleteListener<Void>() {
-                        @Override
-                        public void onComplete(@NonNull Task<Void> task) {
-                            Log.i("FIREBASE SERVICE", "ID UNSUBSCRIBE SUCCESSFULLY.....");
-                            logoutUser();
-                            ((StudentsDashboardActivity) context).finish();
-                        }
-                    });
-                } else {
-                    Log.i("FIREBASE SERVICE", "NOTHING TO UNSUBSCRIBE SUCCESSFULLY.....");
-                }
+                unsubscribe(topic, () -> {
+                    logoutUser();
+                    if (context instanceof Activity) {
+                        ((Activity) context).finish();
+                    }
+                });
             }
         });
         alert.setNegativeButton("No", new DialogInterface.OnClickListener() {
@@ -402,7 +409,33 @@ public class SessionManager {
             }
         });
         AlertDialog dialog = alert.create();
+        dialog.setOnDismissListener(d -> logoutDialogShowing = false);
+        logoutDialogShowing = true;
         dialog.show();
+    }
+
+    /** Unsubscribes from an FCM topic (if any) and then runs {@code then}, whether or not it worked. */
+    private void unsubscribe(String topic, Runnable then) {
+        if (topic == null || topic.isEmpty()) {
+            if (then != null) then.run();
+            return;
+        }
+        try {
+            FirebaseMessaging.getInstance().unsubscribeFromTopic(topic).addOnCompleteListener(task -> {
+                Log.i("FIREBASE SERVICE", "Unsubscribe from topic: " + (task.isSuccessful() ? "ok" : "failed"));
+                if (then != null) then.run();
+            });
+        } catch (Exception e) {
+            Log.e("FIREBASE SERVICE", "Unsubscribe failed", e);
+            if (then != null) then.run();
+        }
+    }
+
+    /** Dialogs need a live Activity; showing one on a finishing screen crashes with BadTokenException. */
+    private boolean canShowDialog() {
+        if (!(context instanceof Activity)) return false;
+        Activity activity = (Activity) context;
+        return !activity.isFinishing() && !activity.isDestroyed();
     }
 
     public String getCollegeCode()
@@ -412,6 +445,7 @@ public class SessionManager {
 
     public void getAlertWithOk(String msg)
     {
+        if (!canShowDialog()) return;
         AlertDialog.Builder alert = new AlertDialog.Builder(context, R.style.myAlertDialog);
         alert.setTitle(R.string.app_name);
         alert.setIcon(R.mipmap.ic_launcher);
@@ -430,6 +464,7 @@ public class SessionManager {
 
     public void getNotificationAlertWithOk(String title, String msg)
     {
+        if (!canShowDialog()) return;
         AlertDialog.Builder alert = new AlertDialog.Builder(context, R.style.myAlertDialog);
         alert.setTitle(title);
         alert.setIcon(R.mipmap.ic_launcher);
@@ -461,7 +496,7 @@ public class SessionManager {
     }
 
     public void showDownloadCompleteDialog(Uri uri) {
-
+        if (uri == null || !canShowDialog()) return;
         AlertDialog.Builder alert = new AlertDialog.Builder(context, R.style.myAlertDialog);
         alert.setTitle(R.string.app_name);
         alert.setIcon(R.mipmap.ic_launcher);
@@ -471,10 +506,15 @@ public class SessionManager {
         alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
+                String type = context.getContentResolver().getType(uri);
                 Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setDataAndType(uri, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                intent.setDataAndType(uri, type != null ? type : "*/*");
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                context.startActivity(intent);
+                try {
+                    context.startActivity(intent);
+                } catch (ActivityNotFoundException e) {
+                    Toast.makeText(context, "No app found to open this file. It is saved in Downloads.", Toast.LENGTH_LONG).show();
+                }
                 dialog.dismiss();
             }
         });

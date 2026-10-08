@@ -13,8 +13,16 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:importantForAccessibility="no"
+        android:alpha="0.55"
         android:scaleType="centerCrop"
         android:src="@drawable/login_bg" />
+
+    <!-- Brand wash: soft logo-green glow top-right, faint charcoal bottom-left -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_brand_wash"
+        android:importantForAccessibility="no" />
 
     <!-- Centre: logo + tagline -->
     <LinearLayout

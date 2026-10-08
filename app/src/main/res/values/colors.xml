@@ -21,4 +21,10 @@
     <color name="text_muted">#6B6B6B</color>
     <color name="card_white">#F2FFFFFF</color>
     <color name="stroke_light">#E3E3E3</color>
+
+    <!-- Brand palette from the Eskooltech logo: charcoal lettering + lime green -->
+    <color name="brand_primary">#2B2F2C</color>        <!-- toolbar, headers -->
+    <color name="brand_primary_dark">#1E2220</color>   <!-- status bar -->
+    <color name="brand_accent">#4F8A1A</color>        <!-- buttons, focused inputs, tabs (white text passes contrast) -->
+    <color name="brand_green_tint">#EEF7E3</color>     <!-- soft green surfaces -->
 </resources>

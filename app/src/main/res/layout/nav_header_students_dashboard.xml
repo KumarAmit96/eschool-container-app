@@ -2,8 +2,9 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="@dimen/size_200"
-    android:background="@color/purple_900"
+    android:layout_height="wrap_content"
+    android:minHeight="@dimen/size_200"
+    android:background="@drawable/bg_drawer_header"
     android:gravity="bottom"
     android:orientation="vertical"
     android:paddingLeft="@dimen/activity_horizontal_margin"
@@ -116,31 +117,42 @@
             android:textColor="@color/white"
             android:visibility="gone" />
 
+        <!-- Sibling switcher: shown only when the parent has more than one child -->
         <LinearLayout
+            android:id="@+id/sibling_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/size_10"
+            android:background="@drawable/bg_sibling_switcher"
+            android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:id="@+id/sibling_layout"
-            android:padding="@dimen/size_4">
+            android:paddingStart="12dp"
+            android:paddingEnd="8dp"
+            android:visibility="gone">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/quicksand_regular"
-                android:gravity="center"
-                android:text="Session : "
-                android:textColor="@color/white"
-                android:visibility="gone" />
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_switch_account" />
 
             <Spinner
                 android:id="@+id/session"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:dropDownSelector="@color/white"
-                android:gravity="start|center"
-                android:scrollbars="none"
+                android:layout_weight="1"
+                android:background="@null"
+                android:contentDescription="@string/switch_sibling"
+                android:dropDownVerticalOffset="8dp"
+                android:popupBackground="@drawable/bg_sibling_popup"
+                android:popupElevation="8dp"
                 android:spinnerMode="dropdown" />
 
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_arrow_drop_down_white" />
         </LinearLayout>
 
     </LinearLayout>

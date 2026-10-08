@@ -6,7 +6,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
 
 import androidx.annotation.Nullable;
 
@@ -22,7 +21,7 @@ public class MyDatabase extends SQLiteOpenHelper {
 
     //DATABASE DEFINITION
     private static final String DB_NAME = "my_school.db";
-    private static final int DB_VERSION = 2;
+    private static final int DB_VERSION = 3;
 
     // Table Name
     public static final String MENU_ITEM = "MENU_ITEM";
@@ -137,6 +136,10 @@ public class MyDatabase extends SQLiteOpenHelper {
     public static final String SIBLING_APP_TOKEN = "sib_app_token";
     public static final String SIBLING_PHOTO = "sib_photo";
     public static final String SIBLING_LANDING_PAGE = "sib_landing_page";
+    public static final String SIBLING_PAYMENT_GATEWAY = "sib_payment_gateway";
+    public static final String SIBLING_ENROLLMENT_NO = "sib_enrollment_no";
+    public static final String SIBLING_CHANGE_PASSWORD_PAGE = "sib_change_password_page";
+    public static final String SIBLING_NOTIFICATION_PAGE = "sib_notification_page";
 
 
     //Table menu item
@@ -153,7 +156,9 @@ public class MyDatabase extends SQLiteOpenHelper {
 
     private static final String CREATE_TABLE_FOR_SIBLING = "create table " + MY_SIBLING_TABLE + "(" +SIBLING_SESSION_ID
             + " TEXT, " + SIBLING_STUDENT_ID + " TEXT, " + SIBLING_STUDENT_NAME + " TEXT, "+ SIBLING_CLASS + " TEXT, "
-            + SIBLING_SECTION +" TEXT, "+ SIBLING_TOKEN +" TEXT, "+ SIBLING_APP_TOKEN +" TEXT, " + SIBLING_LANDING_PAGE +" TEXT, " + SIBLING_PHOTO +" TEXT );";
+            + SIBLING_SECTION +" TEXT, "+ SIBLING_TOKEN +" TEXT, "+ SIBLING_APP_TOKEN +" TEXT, " + SIBLING_LANDING_PAGE +" TEXT, "
+            + SIBLING_PHOTO +" TEXT, " + SIBLING_PAYMENT_GATEWAY + " TEXT, " + SIBLING_ENROLLMENT_NO + " TEXT, "
+            + SIBLING_CHANGE_PASSWORD_PAGE + " TEXT, " + SIBLING_NOTIFICATION_PAGE + " TEXT );";
 
     private static final String CREATE_TABLE_FOR_SESSION_DATA = "create table " + SESSION_DATA + "(" +SESSION_ID
             + " TEXT, " + SESSION_NAME +" TEXT );";
@@ -170,14 +175,17 @@ public class MyDatabase extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        // All tables are caches of server data; they are re-downloaded on the next app start.
         db.execSQL("DROP TABLE IF EXISTS " + MENU_ITEM);
         db.execSQL("DROP TABLE IF EXISTS " + MY_SIBLING_TABLE);
         db.execSQL("DROP TABLE IF EXISTS " + SESSION_DATA);
         onCreate(db);
     }
 
+    // Note: the database is intentionally not closed after each call. SQLiteOpenHelper keeps one
+    // connection open; closing it while an API callback is still writing caused
+    // "attempt to re-open an already-closed object" crashes. Cursors are always closed.
 
-    //set teacher data
     public void setMenuItem(MenuResponse response, Integer parentId) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -187,39 +195,33 @@ public class MyDatabase extends SQLiteOpenHelper {
         values.put(MENU_LARGE_ICON, response.getIconLarge());
         values.put(MENU_SMALL_ICON, response.getIconSmall());
         values.put(MENU_PARENT_ID, parentId);
-        // insert row
-        long i = db.insert(MENU_ITEM, null, values);
-        Log.i("DB", i+"::"+response);
-        db.close();
+        db.insert(MENU_ITEM, null, values);
     }
 
-
-
-    //read homework by admin
+    /** Returns "name::url" for the menu item, or null. */
     @SuppressLint("Range")
     public String getMenuUrlByName(String menuName)
     {
-        String selectQuery = "SELECT  * FROM " + MENU_ITEM + " WHERE " +MENU_NAME+ " = '"+ menuName + "' ";
-        SQLiteDatabase db = this.getWritableDatabase();
-        @SuppressLint("Recycle")
-        Cursor cursor = db.rawQuery(selectQuery, null);
-        // looping through all rows and adding to list
-        if (cursor.moveToFirst()) return cursor.getString(cursor.getColumnIndex(MENU_NAME)).concat("::").concat(cursor.getString(cursor.getColumnIndex(MENU_URL)));
-        db.close();
+        if (menuName == null) return null;
+        SQLiteDatabase db = this.getReadableDatabase();
+        try (Cursor cursor = db.rawQuery("SELECT * FROM " + MENU_ITEM + " WHERE " + MENU_NAME + " = ?", new String[]{menuName})) {
+            if (cursor.moveToFirst()) {
+                return cursor.getString(cursor.getColumnIndex(MENU_NAME)) + "::" + cursor.getString(cursor.getColumnIndex(MENU_URL));
+            }
+        }
         return null;
     }
 
-    //read homework by admin
     @SuppressLint("Range")
     public String getNameByUrl(String menuUrl)
     {
-        String selectQuery = "SELECT  * FROM " + MENU_ITEM + " WHERE " +MENU_URL+ " = '"+ menuUrl + "' ";
-        SQLiteDatabase db = this.getWritableDatabase();
-        @SuppressLint("Recycle")
-        Cursor cursor = db.rawQuery(selectQuery, null);
-        // looping through all rows and adding to list
-        if (cursor.moveToFirst()) return cursor.getString(cursor.getColumnIndex(MENU_NAME));
-        db.close();
+        if (menuUrl == null) return null;
+        SQLiteDatabase db = this.getReadableDatabase();
+        try (Cursor cursor = db.rawQuery("SELECT * FROM " + MENU_ITEM + " WHERE " + MENU_URL + " = ?", new String[]{menuUrl})) {
+            if (cursor.moveToFirst()) {
+                return cursor.getString(cursor.getColumnIndex(MENU_NAME));
+            }
+        }
         return null;
     }
 
@@ -227,13 +229,9 @@ public class MyDatabase extends SQLiteOpenHelper {
     public List<MenuResponse> getMenuItem()
     {
         ArrayList<MenuResponse> menuList = new ArrayList<>();
-        String selectQuery = "SELECT  * FROM " + MENU_ITEM ;
-        SQLiteDatabase db = this.getWritableDatabase();
-        @SuppressLint("Recycle")
-        Cursor cursor = db.rawQuery(selectQuery, null);
-        // looping through all rows and adding to list
-        if (cursor.moveToFirst()) {
-            do {
+        SQLiteDatabase db = this.getReadableDatabase();
+        try (Cursor cursor = db.rawQuery("SELECT * FROM " + MENU_ITEM, null)) {
+            while (cursor.moveToNext()) {
                 MenuResponse data = new MenuResponse();
                 data.setName(cursor.getString(cursor.getColumnIndex(MENU_NAME)));
                 data.setId(cursor.getInt(cursor.getColumnIndex(MENU_ID)));
@@ -242,19 +240,14 @@ public class MyDatabase extends SQLiteOpenHelper {
                 data.setIconSmall(cursor.getString(cursor.getColumnIndex(MENU_SMALL_ICON)));
                 data.setParentId(cursor.getInt(cursor.getColumnIndex(MENU_PARENT_ID)));
                 menuList.add(data);
-
-            } while (cursor.moveToNext());
+            }
         }
-        db.close();
         return menuList;
     }
 
-    //set homework data
     public void setDataIntoSiblingTable(StudentLoginResponse student) {
-
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
-
         values.put(SIBLING_SESSION_ID, student.getSessionId());
         values.put(SIBLING_STUDENT_ID, student.getStudentId());
         values.put(SIBLING_STUDENT_NAME, student.getStudentName());
@@ -264,65 +257,53 @@ public class MyDatabase extends SQLiteOpenHelper {
         values.put(SIBLING_APP_TOKEN, student.getAppToken());
         values.put(SIBLING_PHOTO, student.getPhoto());
         values.put(SIBLING_LANDING_PAGE, student.getLandingPage());
-        Log.i("SIBLING", "RECORD");
-        // insert row
-        long id = db.insert(MY_SIBLING_TABLE, null, values);
-        db.close();
+        values.put(SIBLING_PAYMENT_GATEWAY, student.getPayment_gateway());
+        values.put(SIBLING_ENROLLMENT_NO, student.getEnrollment_no());
+        values.put(SIBLING_CHANGE_PASSWORD_PAGE, student.getChangePasswordPage());
+        values.put(SIBLING_NOTIFICATION_PAGE, student.getNotificationPage());
+        db.insert(MY_SIBLING_TABLE, null, values);
     }
 
-    @SuppressLint("Range")
+    /** Returns the stored sibling, or null when it is not in the table. */
+    @Nullable
     public StudentLoginResponse getSiblingData(String studentId)
     {
-        StudentLoginResponse data = new StudentLoginResponse();
-        String selectQuery = "SELECT  * FROM " + MY_SIBLING_TABLE + " WHERE " +SIBLING_STUDENT_ID+ " = "+ studentId;
-        SQLiteDatabase db = this.getWritableDatabase();
-        Cursor cursor = db.rawQuery(selectQuery, null);
-        // looping through all rows and adding to list
-        if (cursor.moveToFirst()) {
-            do {
-                data.setSessionId(cursor.getString(cursor.getColumnIndex(SIBLING_SESSION_ID)));
-                data.setStudentId(cursor.getString(cursor.getColumnIndex(SIBLING_STUDENT_ID)));
-                data.setStudentName(cursor.getString(cursor.getColumnIndex(SIBLING_STUDENT_NAME)));
-                data.setClassId(cursor.getString(cursor.getColumnIndex(SIBLING_CLASS)));
-                data.setSectionId(cursor.getString(cursor.getColumnIndex(SIBLING_SECTION)));
-                data.setToken(cursor.getString(cursor.getColumnIndex(SIBLING_TOKEN)));
-                data.setAppToken(cursor.getString(cursor.getColumnIndex(SIBLING_APP_TOKEN)));
-                data.setPhoto(cursor.getString(cursor.getColumnIndex(SIBLING_PHOTO)));
-                data.setLandingPage(cursor.getString(cursor.getColumnIndex(SIBLING_LANDING_PAGE)));
-
-            } while (cursor.moveToNext());
+        if (studentId == null) return null;
+        SQLiteDatabase db = this.getReadableDatabase();
+        try (Cursor cursor = db.rawQuery("SELECT * FROM " + MY_SIBLING_TABLE + " WHERE " + SIBLING_STUDENT_ID + " = ?", new String[]{studentId})) {
+            return cursor.moveToFirst() ? readSibling(cursor) : null;
         }
-        db.close();
-        // return sibling data
-        return data;
     }
 
-    @SuppressLint("Range")
     public List<StudentLoginResponse> getAllSiblingData()
     {
         List<StudentLoginResponse> list = new ArrayList<>();
-        String selectQuery = "SELECT  * FROM " + MY_SIBLING_TABLE;
-        SQLiteDatabase db = this.getWritableDatabase();
-        Cursor cursor = db.rawQuery(selectQuery, null);
-        // looping through all rows and adding to list
-        if (cursor.moveToFirst()) {
-            do {
-                StudentLoginResponse data = new StudentLoginResponse();
-                data.setSessionId(cursor.getString(cursor.getColumnIndex(SIBLING_SESSION_ID)));
-                data.setStudentId(cursor.getString(cursor.getColumnIndex(SIBLING_STUDENT_ID)));
-                data.setStudentName(cursor.getString(cursor.getColumnIndex(SIBLING_STUDENT_NAME)));
-                data.setClassId(cursor.getString(cursor.getColumnIndex(SIBLING_CLASS)));
-                data.setSectionId(cursor.getString(cursor.getColumnIndex(SIBLING_SECTION)));
-                data.setToken(cursor.getString(cursor.getColumnIndex(SIBLING_TOKEN)));
-                data.setAppToken(cursor.getString(cursor.getColumnIndex(SIBLING_APP_TOKEN)));
-                data.setPhoto(cursor.getString(cursor.getColumnIndex(SIBLING_PHOTO)));
-                data.setLandingPage(cursor.getString(cursor.getColumnIndex(SIBLING_LANDING_PAGE)));
-                list.add(data);
-            } while (cursor.moveToNext());
+        SQLiteDatabase db = this.getReadableDatabase();
+        try (Cursor cursor = db.rawQuery("SELECT * FROM " + MY_SIBLING_TABLE, null)) {
+            while (cursor.moveToNext()) {
+                list.add(readSibling(cursor));
+            }
         }
-        db.close();
-        // return sibling data
         return list;
+    }
+
+    @SuppressLint("Range")
+    private StudentLoginResponse readSibling(Cursor cursor) {
+        StudentLoginResponse data = new StudentLoginResponse();
+        data.setSessionId(cursor.getString(cursor.getColumnIndex(SIBLING_SESSION_ID)));
+        data.setStudentId(cursor.getString(cursor.getColumnIndex(SIBLING_STUDENT_ID)));
+        data.setStudentName(cursor.getString(cursor.getColumnIndex(SIBLING_STUDENT_NAME)));
+        data.setClassId(cursor.getString(cursor.getColumnIndex(SIBLING_CLASS)));
+        data.setSectionId(cursor.getString(cursor.getColumnIndex(SIBLING_SECTION)));
+        data.setToken(cursor.getString(cursor.getColumnIndex(SIBLING_TOKEN)));
+        data.setAppToken(cursor.getString(cursor.getColumnIndex(SIBLING_APP_TOKEN)));
+        data.setPhoto(cursor.getString(cursor.getColumnIndex(SIBLING_PHOTO)));
+        data.setLandingPage(cursor.getString(cursor.getColumnIndex(SIBLING_LANDING_PAGE)));
+        data.setPayment_gateway(cursor.getString(cursor.getColumnIndex(SIBLING_PAYMENT_GATEWAY)));
+        data.setEnrollment_no(cursor.getString(cursor.getColumnIndex(SIBLING_ENROLLMENT_NO)));
+        data.setChangePasswordPage(cursor.getString(cursor.getColumnIndex(SIBLING_CHANGE_PASSWORD_PAGE)));
+        data.setNotificationPage(cursor.getString(cursor.getColumnIndex(SIBLING_NOTIFICATION_PAGE)));
+        return data;
     }
 
     public long setSessionData(SessionResponse sessionResponse) {
@@ -330,30 +311,22 @@ public class MyDatabase extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put(SESSION_ID, sessionResponse.getSessionId());
         values.put(SESSION_NAME, sessionResponse.getSessionName());
-        // insert row
-        long id = db.insert(SESSION_DATA, null, values);
-        db.close();
-        return id;
+        return db.insert(SESSION_DATA, null, values);
     }
 
     @SuppressLint("Range")
     public ArrayList<SessionResponse> getSessionData()
     {
         ArrayList<SessionResponse> sessionData = new ArrayList<>();
-        String selectQuery = "SELECT  * FROM " + SESSION_DATA;
-        SQLiteDatabase db = this.getWritableDatabase();
-        Cursor cursor = db.rawQuery(selectQuery, null);
-        // looping through all rows and adding to list
-        if (cursor.moveToFirst()) {
-            do {
+        SQLiteDatabase db = this.getReadableDatabase();
+        try (Cursor cursor = db.rawQuery("SELECT * FROM " + SESSION_DATA, null)) {
+            while (cursor.moveToNext()) {
                 SessionResponse data = new SessionResponse();
                 data.setSessionName(cursor.getString(cursor.getColumnIndex(SESSION_NAME)));
                 data.setSessionId(cursor.getString(cursor.getColumnIndex(SESSION_ID)));
                 sessionData.add(data);
-            } while (cursor.moveToNext());
+            }
         }
-        db.close();
-        // return notes list
         return sessionData;
     }
 

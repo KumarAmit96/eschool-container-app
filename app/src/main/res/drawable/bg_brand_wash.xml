@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Overlay for the splash / login screens, drawn on top of the doodle pattern -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Light green tint at the top fading to white, so the cards stand out -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:centerColor="#00FFFFFF"
+                android:endColor="#99FFFFFF"
+                android:startColor="#CCEEF7E3"
+                android:type="linear" />
+        </shape>
+    </item>
+    <!-- Lime glow, top-right corner -->
+    <item
+        android:width="360dp"
+        android:height="360dp"
+        android:gravity="top|end"
+        android:right="-150dp"
+        android:top="-150dp">
+        <shape android:shape="oval">
+            <gradient
+                android:endColor="#008CC63F"
+                android:gradientRadius="180dp"
+                android:startColor="#558CC63F"
+                android:type="radial" />
+        </shape>
+    </item>
+    <!-- Faint charcoal glow, bottom-left corner -->
+    <item
+        android:width="320dp"
+        android:height="320dp"
+        android:bottom="-140dp"
+        android:gravity="bottom|start"
+        android:left="-140dp">
+        <shape android:shape="oval">
+            <gradient
+                android:endColor="#002B2F2C"
+                android:gradientRadius="160dp"
+                android:startColor="#262B2F2C"
+                android:type="radial" />
+        </shape>
+    </item>
+    <!-- Lime accent strip along the bottom edge -->
+    <item
+        android:height="4dp"
+        android:gravity="bottom">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="0"
+                android:endColor="@color/brand_green"
+                android:startColor="@color/brand_accent" />
+        </shape>
+    </item>
+</layer-list>

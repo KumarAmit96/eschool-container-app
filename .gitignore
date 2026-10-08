@@ -21,6 +21,7 @@ certificate/
 *.keystore
 *.pepk
 password.txt
+keystore.properties
 
 # Built APK / AAB files
 /app/release/

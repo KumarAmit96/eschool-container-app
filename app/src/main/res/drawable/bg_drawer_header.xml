@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Drawer header: logo charcoal fading into a deep logo green, with a lime accent line at the bottom -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="315"
+                android:endColor="#3E6B16"
+                android:centerColor="#2E3A2A"
+                android:startColor="@color/brand_primary"
+                android:type="linear" />
+        </shape>
+    </item>
+    <!-- Soft lime glow, top-right -->
+    <item
+        android:width="220dp"
+        android:height="220dp"
+        android:gravity="top|end"
+        android:right="-90dp"
+        android:top="-110dp">
+        <shape android:shape="oval">
+            <solid android:color="#268CC63F" />
+        </shape>
+    </item>
+    <item
+        android:height="3dp"
+        android:gravity="bottom">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/brand_green" />
+        </shape>
+    </item>
+</layer-list>

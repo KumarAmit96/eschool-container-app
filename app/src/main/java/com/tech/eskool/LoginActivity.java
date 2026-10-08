@@ -10,6 +10,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -19,8 +20,6 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.tech.eskool.database.MyDatabase;
 import com.tech.eskool.dto.SchoolLoginClass;
@@ -65,6 +64,13 @@ public class LoginActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+        // Android 16 (API 36) no longer calls onBackPressed(); handle back via the dispatcher.
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                finish();
+            }
+        });
         FirebaseMessaging.getInstance().setAutoInitEnabled(true);
         sessionManager = new SessionManager(this);
         if(sessionManager.checkConnectivity(this)) {
@@ -77,6 +83,7 @@ public class LoginActivity extends AppCompatActivity {
             Intent intent = getIntent();
             if (intent != null) {
                 type = intent.getStringExtra("TYPE");
+                if (type == null) type = "PARENT";
                 loginText.setText(type.concat(" ").concat("LOGIN"));
                 if(!type.equals("PARENT"))
                     forgot_layout.setVisibility(View.GONE);
@@ -163,15 +170,9 @@ public class LoginActivity extends AppCompatActivity {
                                     codes, response.body().getResponse().getPhoto(), response.body().getResponse().getCollege_name(),
                                     response.body().getResponse().getLandingPage(), response.body().getResponse().getChangePasswordPage(),
                                     response.body().getResponse().getNotificationPage());
-                            new ApiHandler(sessionManager, myDatabase).setUserMenuItem(codes, response.body().getResponse().getToken());
-                            Thread.sleep(3000);
-                            getDialog();
-                            Intent intent = new Intent(LoginActivity.this, TeacherDashBoardActivity.class);
-                            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            startActivity(intent);
-                            finishLoginType();
-                            finish();
+                            // Open the dashboard once the menu is stored, so the drawer isn't empty.
+                            new ApiHandler(sessionManager, myDatabase).setUserMenuItem(codes, response.body().getResponse().getToken(),
+                                    () -> openDashboard(TeacherDashBoardActivity.class));
                         } else {
                             getDialog();
                             sessionManager.getAlertWithOk(response.body().getMessage());
@@ -196,6 +197,8 @@ public class LoginActivity extends AppCompatActivity {
                     openVerification(call.request());
                 else if (isNotJson(t))
                     showRawServerReply(call.request());
+                else if (t instanceof java.io.IOException)
+                    sessionManager.getAlertWithOk(getString(R.string.login_network_error));
                 else
                     sessionManager.getAlertWithOk(StartActivity.SOMETHING_WENT_WRONG);
             }
@@ -228,15 +231,8 @@ public class LoginActivity extends AppCompatActivity {
                                     response.body().getResponse().getAppToken(), codes, response.body().getResponse().getCollege_name(), response.body().getResponse().getPayment_gateway(),
                                     response.body().getResponse().getEnrollment_no(), response.body().getResponse().getLandingPage(),
                                     response.body().getResponse().getChangePasswordPage(), response.body().getResponse().getNotificationPage());
-                            new ApiHandler(sessionManager, myDatabase).setStudentMenuItem(codes, response.body().getResponse().getToken());
-                            Thread.sleep(3000);
-                            getDialog();
-                            Intent intent = new Intent(LoginActivity.this, StudentsDashboardActivity.class);
-                            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            startActivity(intent);
-                            finishLoginType();
-                            finish();
+                            new ApiHandler(sessionManager, myDatabase).setStudentMenuItem(codes, response.body().getResponse().getToken(),
+                                    () -> openDashboard(StudentsDashboardActivity.class));
 
 
                         }
@@ -270,6 +266,8 @@ public class LoginActivity extends AppCompatActivity {
                     openVerification(call.request());
                 else if (isNotJson(t))
                     showRawServerReply(call.request());
+                else if (t instanceof java.io.IOException)
+                    sessionManager.getAlertWithOk(getString(R.string.login_network_error));
                 else
                     sessionManager.getAlertWithOk(StartActivity.SOMETHING_WENT_WRONG);
 
@@ -278,6 +276,17 @@ public class LoginActivity extends AppCompatActivity {
 
     }
 
+
+    private void openDashboard(Class<?> dashboard)
+    {
+        if (isFinishing() || isDestroyed()) return;
+        if (progressDialog.isShowing()) progressDialog.dismiss();
+        Intent intent = new Intent(LoginActivity.this, dashboard);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finishLoginType();
+        finish();
+    }
 
     private void getDialog()
     {
@@ -289,13 +298,15 @@ public class LoginActivity extends AppCompatActivity {
 
     public void  getForgetCall(View v)
     {
-        startActivity(new Intent(this, ForgetPasswordActivity.class));
-    }
-
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        finish();
+        String code = code_college.getText().toString().trim();
+        if (code.isEmpty()) {
+            code_college.setError("Please fill the eskool code");
+            code_college.requestFocus();
+            return;
+        }
+        Intent intent = new Intent(this, ForgetPasswordActivity.class);
+        intent.putExtra(ForgetPasswordActivity.EXTRA_COLLEGE_CODE, code);
+        startActivity(intent);
     }
 
     private void finishLoginType(){
@@ -304,21 +315,22 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void getFCMToken(String appToken) {
-
-        FirebaseMessaging.getInstance().subscribeToTopic(appToken)
-                .addOnCompleteListener(new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        String msg = "Successfully subscribed...";
-                        if (!task.isSuccessful()) {
-                            msg = "Not subscribed successfully...";
-                            sessionManager.logoutUser();
-                            return;
+        if (appToken == null || appToken.isEmpty()) {
+            Log.w(TAG, "No app token: notifications not subscribed");
+            return;
+        }
+        try {
+            FirebaseMessaging.getInstance().subscribeToTopic(appToken)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            Log.d(TAG, "Subscribed to notifications");
+                        } else {
+                            Log.w(TAG, "Notification subscription failed", task.getException());
                         }
-                        Log.d(TAG, msg);
-                    }
-                });
-
+                    });
+        } catch (Exception e) {
+            Log.e(TAG, "Notification subscription failed", e);
+        }
     }
 
     /** True when the server replied with something that is not JSON (e.g. an HTML page). */
