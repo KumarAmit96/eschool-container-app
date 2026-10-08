@@ -4,6 +4,8 @@
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/brand_primary</item>
         <item name="colorPrimaryVariant">@color/brand_primary_dark</item>
+        <!-- DrawerLayout paints the status bar with colorPrimaryDark (Material's default is purple) -->
+        <item name="colorPrimaryDark">@color/brand_primary_dark</item>
         <item name="colorOnPrimary">@color/white</item>
         <!-- Secondary brand color. -->
         <item name="colorSecondary">@color/brand_green</item>

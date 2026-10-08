@@ -5,6 +5,7 @@ One visual family: a rounded colour tile with a soft top-left-to-bottom-right gr
 line glyph (24-unit grid, Material-style strokes), one colour per feature. Writes SVG sources to
 ./svg and renders PNGs with headless Chrome.
 
+    large/<name>.png  - dashboard tiles (icon_large), 512 px. No text: the app prints the name.
     small/<name>.png  - menu icons (icon_small). Each file keeps the size it has on the server
                         (mostly 128 px), and the file names match, so menu URLs keep working.
 
@@ -153,6 +154,20 @@ COLORS = {
     "report": "#475569",
 }
 
+# Large server file name -> (design, size). paid/payment are tiny inline icons.
+LARGE = {
+    "attendance": ("attendance", 512), "birthday": ("birthday", 512), "class-work": ("class-work", 512),
+    "dashboard": ("dashboard", 512), "enquiry": ("enquiry", 512), "Exam -Time-Table": ("exam-timetable", 512),
+    "exam-timetable": ("exam-timetable", 512), "fee": ("fee", 512), "holiday-calendar": ("holiday-calendar", 512),
+    "home-work": ("home-work", 512), "live": ("live", 512), "modal-paper": ("model-paper", 512),
+    "notification": ("notification", 512), "paid": ("paid", 32), "payment": ("payment", 32),
+    "photo-gallery": ("photo-gallery", 512), "question-answer": ("question-answer", 512),
+    "result": ("result", 512), "School-Time-Table": ("school-timetable", 512),
+    "school-timetable": ("school-timetable", 512), "smart-class": ("smart-class", 512),
+    "student-attendance": ("student-attendance", 512), "student-detail": ("student-detail", 512),
+    "syllabus": ("syllabus", 512), "video-gallery": ("video-gallery", 512),
+}
+
 # Server file name -> (design, size in px). Sizes match the current files on the server.
 SMALL = {
     "birthday": ("birthday", 128), "class-work": ("class-work", 128), "dashboard": ("dashboard", 128),
@@ -179,12 +194,17 @@ def shade(hex_color, factor):
 
 
 def svg(design, size):
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 100 100">
+{tile(design, size)}
+</svg>'''
+
+
+def tile(design, size):
+    """The gradient tile + glyph, drawn in a 100x100 box."""
     color = COLORS[design]
     light, dark = shade(color, 0.14), shade(color, -0.16)
-    # Small files get a slightly thicker stroke so the glyph stays readable at 32 px.
     stroke = 2.1 if size <= 32 else 1.75
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 100 100">
-<defs>
+    return f'''<defs>
   <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
     <stop offset="0" stop-color="{light}"/><stop offset="1" stop-color="{dark}"/>
   </linearGradient>
@@ -195,8 +215,7 @@ def svg(design, size):
 <rect x="2" y="2" width="96" height="96" rx="24" fill="url(#g)"/>
 <rect x="2" y="2" width="96" height="96" rx="24" fill="url(#h)"/>
 <g transform="translate(20 20) scale(2.5)" fill="none" stroke="#fff" stroke-width="{stroke}"
-   stroke-linecap="round" stroke-linejoin="round">{GLYPHS[design]}</g>
-</svg>'''
+   stroke-linecap="round" stroke-linejoin="round">{GLYPHS[design]}</g>'''
 
 
 def render(svg_path, png_path, size):
@@ -215,16 +234,17 @@ def main():
             f.write(svg(design, 100))
 
     tmp = os.path.join(out, "_tmp")
-    dest = os.path.join(out, "small")
     os.makedirs(tmp, exist_ok=True)
-    os.makedirs(dest, exist_ok=True)
-    for name, (design, size) in SMALL.items():
-        src = os.path.join(tmp, f"{design}_{size}.svg")
-        if not os.path.exists(src):
-            with open(src, "w", encoding="utf-8") as f:
-                f.write(svg(design, size))
-        render(src, os.path.join(dest, name + ".png"), size)
-        print("small", name, size)
+    for folder, mapping, make in (("large", LARGE, svg), ("small", SMALL, svg)):
+        dest = os.path.join(out, folder)
+        os.makedirs(dest, exist_ok=True)
+        for name, (design, size) in mapping.items():
+            src = os.path.join(tmp, f"{folder}_{design}_{size}.svg")
+            if not os.path.exists(src):
+                with open(src, "w", encoding="utf-8") as f:
+                    f.write(make(design, size))
+            render(src, os.path.join(dest, name + ".png"), size)
+            print(folder, name, size)
     for f in os.listdir(tmp):
         os.remove(os.path.join(tmp, f))
     os.rmdir(tmp)

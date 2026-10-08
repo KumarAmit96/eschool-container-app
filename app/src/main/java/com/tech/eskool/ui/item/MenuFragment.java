@@ -45,6 +45,7 @@ import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 
+import com.tech.eskool.BuildConfig;
 import com.tech.eskool.R;
 import com.tech.eskool.database.MyDatabase;
 import com.tech.eskool.rest_service.ApiClient;
@@ -156,6 +157,7 @@ public class MenuFragment extends Fragment {
             webView.setPadding(0, 0, 0, 0);
             webView.getSettings().setDefaultTextEncodingName("utf-8");
             webView.addJavascriptInterface(new JavaScriptInterface(getContext(), webView), "Android");
+            clearWebCacheAfterUpdate();
             loadCurrentPage();
             webView.setDownloadListener(new DownloadListener() {
                 @Override
@@ -170,6 +172,18 @@ public class MenuFragment extends Fragment {
 
         } else {
             getAlertWithOkForActivity(NO_INTERNET);
+        }
+    }
+
+    /**
+     * The server sends images (dashboard icons) without Cache-Control, so the WebView kept old
+     * icons for weeks after they were replaced. Start each new app version with an empty cache.
+     */
+    private void clearWebCacheAfterUpdate() {
+        android.content.SharedPreferences prefs = context.getSharedPreferences("app_state", Context.MODE_PRIVATE);
+        if (prefs.getInt("web_cache_version", 0) != BuildConfig.VERSION_CODE) {
+            webView.clearCache(true);
+            prefs.edit().putInt("web_cache_version", BuildConfig.VERSION_CODE).apply();
         }
     }
 

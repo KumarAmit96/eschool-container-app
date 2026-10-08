@@ -1,0 +1,9 @@
+# Upload as /images/icons/.htaccess on student.eskooltech.com (it also covers /images/icons/small/).
+# Without this, Apache sends no Cache-Control for the icons, so phones and browsers keep old
+# icons cached for weeks after they are replaced. "no-cache" = always ask the server first;
+# an unchanged icon then costs only a tiny "304 Not Modified" reply.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(png|jpe?g|gif|svg|webp)$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>
